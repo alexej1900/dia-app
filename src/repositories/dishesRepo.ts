@@ -50,13 +50,6 @@ interface DishItemRow {
   grams: number;
 }
 
-interface DishSummaryRow {
-  id: string;
-  name: string;
-  total_weight: number;
-  total_carbs: number;
-}
-
 async function loadItems(db: SqlExecutor, dishId: string): Promise<DishItem[]> {
   const rows = await db.getAllAsync<DishItemRow>(
     `SELECT dish_items.product_id AS product_id, products.name AS name,
@@ -75,7 +68,7 @@ async function loadItems(db: SqlExecutor, dishId: string): Promise<DishItem[]> {
   }));
 }
 
-async function replaceItems(db: SqlExecutor, dishId: string, items: DishItemInput[]): Promise<void> {
+async function replaceItemsRaw(db: SqlExecutor, dishId: string, items: DishItemInput[]): Promise<void> {
   await db.runAsync('DELETE FROM dish_items WHERE dish_id = ?', [dishId]);
   for (const item of items) {
     await db.runAsync('INSERT INTO dish_items (dish_id, product_id, grams) VALUES (?, ?, ?)', [
@@ -92,13 +85,17 @@ export async function createDish(db: SqlExecutor, input: DishInput): Promise<Dis
   }
   const now = new Date().toISOString();
   const id = generateId();
-  await db.runAsync('INSERT INTO dishes (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)', [
-    id,
-    input.name,
-    now,
-    now,
-  ]);
-  await replaceItems(db, id, input.items);
+
+  await db.withTransactionAsync(async () => {
+    await db.runAsync('INSERT INTO dishes (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)', [
+      id,
+      input.name,
+      now,
+      now,
+    ]);
+    await replaceItemsRaw(db, id, input.items);
+  });
+
   const dish = await getDish(db, id);
   if (!dish) throw new Error('Failed to load dish after creation');
   return dish;
@@ -109,8 +106,10 @@ export async function updateDish(db: SqlExecutor, id: string, input: DishInput):
     throw new Error('A dish must have at least one ingredient');
   }
   const now = new Date().toISOString();
-  await db.runAsync('UPDATE dishes SET name = ?, updated_at = ? WHERE id = ?', [input.name, now, id]);
-  await replaceItems(db, id, input.items);
+  await db.withTransactionAsync(async () => {
+    await db.runAsync('UPDATE dishes SET name = ?, updated_at = ? WHERE id = ?', [input.name, now, id]);
+    await replaceItemsRaw(db, id, input.items);
+  });
 }
 
 export async function deleteDish(db: SqlExecutor, id: string): Promise<void> {
@@ -132,23 +131,26 @@ export async function getDish(db: SqlExecutor, id: string): Promise<Dish | null>
 }
 
 export async function listDishes(db: SqlExecutor, searchTerm = ''): Promise<DishSummary[]> {
-  const rows = await db.getAllAsync<DishSummaryRow>(
-    `SELECT dishes.id AS id, dishes.name AS name,
-            COALESCE(SUM(dish_items.grams), 0) AS total_weight,
-            COALESCE(SUM(products.carbs_per_100g * dish_items.grams / 100.0), 0) AS total_carbs
+  const rows = await db.getAllAsync<{ id: string; name: string }>(
+    `SELECT dishes.id AS id, dishes.name AS name
      FROM dishes
-     LEFT JOIN dish_items ON dish_items.dish_id = dishes.id
-     LEFT JOIN products ON products.id = dish_items.product_id
      WHERE dishes.name LIKE ?
-     GROUP BY dishes.id
      ORDER BY dishes.name COLLATE NOCASE`,
     [`%${searchTerm}%`]
   );
-  return rows.map((row) => ({
-    id: row.id,
-    name: row.name,
-    totalWeight: row.total_weight,
-    totalCarbs: row.total_carbs,
-    totalW: carbsToW(row.total_carbs),
-  }));
+
+  const summaries: DishSummary[] = [];
+  for (const row of rows) {
+    const items = await loadItems(db, row.id);
+    const totals = dishTotals(items);
+    summaries.push({
+      id: row.id,
+      name: row.name,
+      totalWeight: totals.totalWeight,
+      totalCarbs: totals.totalCarbs,
+      totalW: totals.totalW,
+    });
+  }
+
+  return summaries;
 }

@@ -8,4 +8,5 @@ export interface SqlExecutor {
   runAsync(sql: string, params?: unknown[]): Promise<SqlRunResult>;
   getAllAsync<T>(sql: string, params?: unknown[]): Promise<T[]>;
   getFirstAsync<T>(sql: string, params?: unknown[]): Promise<T | null>;
+  withTransactionAsync(task: () => Promise<void>): Promise<void>;
 }

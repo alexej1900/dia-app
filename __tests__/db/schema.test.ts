@@ -25,4 +25,27 @@ describe('database schema', () => {
 
     await expect(db.runAsync('DELETE FROM products WHERE id = ?', ['p1'])).rejects.toThrow();
   });
+
+  it('rolls back on transaction error', async () => {
+    const db = await createTestDatabase();
+    const before = await db.getAllAsync<{ id: string }>(
+      'SELECT id FROM products'
+    );
+    expect(before).toHaveLength(0);
+
+    await expect(
+      db.withTransactionAsync(async () => {
+        await db.runAsync(
+          'INSERT INTO products (id, name, carbs_per_100g, is_seed, created_at, updated_at) VALUES (?, ?, ?, 0, ?, ?)',
+          ['p1', 'Bread', 45, '2026-08-06T00:00:00.000Z', '2026-08-06T00:00:00.000Z']
+        );
+        throw new Error('Simulated error');
+      })
+    ).rejects.toThrow('Simulated error');
+
+    const after = await db.getAllAsync<{ id: string }>(
+      'SELECT id FROM products'
+    );
+    expect(after).toHaveLength(0);
+  });
 });

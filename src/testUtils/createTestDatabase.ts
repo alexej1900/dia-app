@@ -36,5 +36,15 @@ export async function createTestDatabase(): Promise<SqlExecutor> {
       stmt.free();
       return row;
     },
+    async withTransactionAsync(task: () => Promise<void>): Promise<void> {
+      raw.run('BEGIN');
+      try {
+        await task();
+        raw.run('COMMIT');
+      } catch (e) {
+        raw.run('ROLLBACK');
+        throw e;
+      }
+    },
   };
 }

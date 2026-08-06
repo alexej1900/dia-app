@@ -76,4 +76,23 @@ describe('dishesRepo', () => {
     expect(results[0].totalCarbs).toBe(28);
     expect(results[0].totalW).toBe(2.8);
   });
+
+  it('rolls back on duplicate productId in items', async () => {
+    const rice = await createProduct(db, { name: 'Rice', carbsPer100g: 28 });
+    const dishesBefore = await db.getAllAsync('SELECT * FROM dishes');
+    expect(dishesBefore).toHaveLength(0);
+
+    await expect(
+      createDish(db, {
+        name: 'Broken dish',
+        items: [
+          { productId: rice.id, grams: 100 },
+          { productId: rice.id, grams: 50 },
+        ],
+      })
+    ).rejects.toThrow();
+
+    const dishesAfter = await db.getAllAsync('SELECT * FROM dishes');
+    expect(dishesAfter).toHaveLength(0);
+  });
 });
