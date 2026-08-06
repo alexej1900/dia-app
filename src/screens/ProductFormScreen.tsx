@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Modal, ActivityIndicator, FlatList } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { openDatabase } from '../db/database';
@@ -11,6 +11,7 @@ import {
   ProductInUseError,
 } from '../repositories/productsRepo';
 import { gramsPerW } from '../calculations/carbs';
+import { searchCarbsByName, OpenFoodFactsMatch, OpenFoodFactsError } from '../services/openFoodFacts';
 import type { ProductsStackParamList } from '../navigation/RootNavigator';
 
 type Nav = NativeStackNavigationProp<ProductsStackParamList, 'ProductForm'>;
@@ -24,6 +25,11 @@ export default function ProductFormScreen() {
   const [name, setName] = useState('');
   const [carbsText, setCarbsText] = useState('');
   const [error, setError] = useState<string | null>(null);
+
+  const [lookupVisible, setLookupVisible] = useState(false);
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupError, setLookupError] = useState<string | null>(null);
+  const [lookupResults, setLookupResults] = useState<OpenFoodFactsMatch[]>([]);
 
   useEffect(() => {
     if (!productId) return;
@@ -74,6 +80,35 @@ export default function ProductFormScreen() {
     }
   };
 
+  const handleLookup = async () => {
+    if (name.trim() === '') {
+      setLookupResults([]);
+      setLookupError('Enter a product name first');
+      setLookupVisible(true);
+      return;
+    }
+    setLookupVisible(true);
+    setLookupLoading(true);
+    setLookupError(null);
+    try {
+      const results = await searchCarbsByName(name.trim());
+      setLookupResults(results);
+      if (results.length === 0) {
+        setLookupError('Nothing found, enter manually');
+      }
+    } catch (e) {
+      setLookupResults([]);
+      setLookupError(e instanceof OpenFoodFactsError ? e.message : 'Lookup failed, enter manually');
+    } finally {
+      setLookupLoading(false);
+    }
+  };
+
+  const applyLookupResult = (match: OpenFoodFactsMatch) => {
+    setCarbsText(String(match.carbsPer100g));
+    setLookupVisible(false);
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.label}>Name</Text>
@@ -89,6 +124,10 @@ export default function ProductFormScreen() {
       />
       <Text style={styles.preview}>{perW !== null ? `${perW.toFixed(0)} g = 1 W` : '—'}</Text>
 
+      <TouchableOpacity style={styles.lookupButton} onPress={handleLookup}>
+        <Text style={styles.lookupButtonText}>Look up carbs</Text>
+      </TouchableOpacity>
+
       {error && <Text style={styles.error}>{error}</Text>}
 
       <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
@@ -100,6 +139,32 @@ export default function ProductFormScreen() {
           <Text style={styles.deleteButtonText}>Delete</Text>
         </TouchableOpacity>
       )}
+
+      <Modal visible={lookupVisible} animationType="slide" onRequestClose={() => setLookupVisible(false)}>
+        <View style={styles.container}>
+          <Text style={styles.label}>Results for &quot;{name}&quot;</Text>
+          {lookupLoading && <ActivityIndicator style={{ marginTop: 20 }} />}
+          {!lookupLoading && lookupError && <Text style={styles.error}>{lookupError}</Text>}
+          {!lookupLoading && (
+            <FlatList
+              data={lookupResults}
+              keyExtractor={(_, index) => String(index)}
+              renderItem={({ item }) => (
+                <TouchableOpacity style={styles.matchRow} onPress={() => applyLookupResult(item)}>
+                  <Text style={styles.name}>
+                    {item.name}
+                    {item.brand ? ` (${item.brand})` : ''}
+                  </Text>
+                  <Text style={styles.detail}>{item.carbsPer100g} g carbs / 100g</Text>
+                </TouchableOpacity>
+              )}
+            />
+          )}
+          <TouchableOpacity style={styles.deleteButton} onPress={() => setLookupVisible(false)}>
+            <Text style={styles.deleteButtonText}>Close</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -121,4 +186,16 @@ const styles = StyleSheet.create({
     borderColor: '#c62828',
   },
   deleteButtonText: { color: '#c62828', fontWeight: '600' },
+  lookupButton: {
+    marginTop: 8,
+    borderRadius: 8,
+    padding: 10,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#2e7d32',
+  },
+  lookupButtonText: { color: '#2e7d32', fontWeight: '600' },
+  matchRow: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#eee' },
+  name: { fontSize: 16, fontWeight: '600' },
+  detail: { fontSize: 13, color: '#555' },
 });
