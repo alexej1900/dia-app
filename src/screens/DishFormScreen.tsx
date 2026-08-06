@@ -60,6 +60,10 @@ export default function DishFormScreen() {
   }, [productSearch]);
 
   const addIngredient = (product: Product) => {
+    if (items.some((item) => item.productId === product.id)) {
+      setError('Already added');
+      return;
+    }
     setItems((prev) => [
       ...prev,
       { productId: product.id, productName: product.name, carbsPer100g: product.carbsPer100g, gramsText: '' },
@@ -99,17 +103,21 @@ export default function DishFormScreen() {
       }
     }
     setError(null);
-    const db = await openDatabase();
-    const input = {
-      name: name.trim(),
-      items: parsedItems.map((item) => ({ productId: item.productId, grams: item.grams })),
-    };
-    if (dishId) {
-      await updateDish(db, dishId, input);
-    } else {
-      await createDish(db, input);
+    try {
+      const db = await openDatabase();
+      const input = {
+        name: name.trim(),
+        items: parsedItems.map((item) => ({ productId: item.productId, grams: item.grams })),
+      };
+      if (dishId) {
+        await updateDish(db, dishId, input);
+      } else {
+        await createDish(db, input);
+      }
+      navigation.goBack();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save dish');
     }
-    navigation.goBack();
   };
 
   const handleDelete = async () => {
