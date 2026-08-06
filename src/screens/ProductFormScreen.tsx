@@ -1,5 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, Modal, ActivityIndicator, FlatList } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  Modal,
+  ActivityIndicator,
+  FlatList,
+  Platform,
+  KeyboardAvoidingView,
+  ScrollView,
+} from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { openDatabase } from '../db/database';
@@ -56,26 +69,30 @@ export default function ProductFormScreen() {
       return;
     }
     setError(null);
-    const db = await openDatabase();
-    if (productId) {
-      await updateProduct(db, productId, { name: name.trim(), carbsPer100g: carbsValue });
-    } else {
-      await createProduct(db, { name: name.trim(), carbsPer100g: carbsValue });
+    try {
+      const db = await openDatabase();
+      if (productId) {
+        await updateProduct(db, productId, { name: name.trim(), carbsPer100g: carbsValue });
+      } else {
+        await createProduct(db, { name: name.trim(), carbsPer100g: carbsValue });
+      }
+      navigation.goBack();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save product');
     }
-    navigation.goBack();
   };
 
   const handleDelete = async () => {
     if (!productId) return;
-    const db = await openDatabase();
     try {
+      const db = await openDatabase();
       await deleteProduct(db, productId);
       navigation.goBack();
     } catch (e) {
       if (e instanceof ProductInUseError) {
         Alert.alert('Cannot delete product', e.message);
       } else {
-        throw e;
+        setError(e instanceof Error ? e.message : 'Failed to delete product');
       }
     }
   };
@@ -110,35 +127,40 @@ export default function ProductFormScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.label}>Name</Text>
-      <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="e.g. Rice" />
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView contentContainerStyle={styles.formContainer}>
+        <Text style={styles.label}>Name</Text>
+        <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="e.g. Rice" />
 
-      <Text style={styles.label}>Carbs per 100g</Text>
-      <TextInput
-        style={styles.input}
-        value={carbsText}
-        onChangeText={setCarbsText}
-        placeholder="e.g. 28"
-        keyboardType="numeric"
-      />
-      <Text style={styles.preview}>{perW !== null ? `${perW.toFixed(0)} g = 1 W` : '—'}</Text>
+        <Text style={styles.label}>Carbs per 100g</Text>
+        <TextInput
+          style={styles.input}
+          value={carbsText}
+          onChangeText={setCarbsText}
+          placeholder="e.g. 28"
+          keyboardType="numeric"
+        />
+        <Text style={styles.preview}>{perW !== null ? `${perW.toFixed(0)} g = 1 W` : '—'}</Text>
 
-      <TouchableOpacity style={styles.lookupButton} onPress={handleLookup}>
-        <Text style={styles.lookupButtonText}>Look up carbs</Text>
-      </TouchableOpacity>
-
-      {error && <Text style={styles.error}>{error}</Text>}
-
-      <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-        <Text style={styles.saveButtonText}>Save</Text>
-      </TouchableOpacity>
-
-      {productId && (
-        <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-          <Text style={styles.deleteButtonText}>Delete</Text>
+        <TouchableOpacity style={styles.lookupButton} onPress={handleLookup}>
+          <Text style={styles.lookupButtonText}>Look up carbs</Text>
         </TouchableOpacity>
-      )}
+
+        {error && <Text style={styles.error}>{error}</Text>}
+
+        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+          <Text style={styles.saveButtonText}>Save</Text>
+        </TouchableOpacity>
+
+        {productId && (
+          <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
+            <Text style={styles.deleteButtonText}>Delete</Text>
+          </TouchableOpacity>
+        )}
+      </ScrollView>
 
       <Modal visible={lookupVisible} animationType="slide" onRequestClose={() => setLookupVisible(false)}>
         <View style={styles.container}>
@@ -165,11 +187,13 @@ export default function ProductFormScreen() {
           </TouchableOpacity>
         </View>
       </Modal>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
+  formContainer: { padding: 16 },
   container: { flex: 1, padding: 16 },
   label: { fontSize: 13, color: '#555', marginTop: 12 },
   input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 8, marginTop: 4 },

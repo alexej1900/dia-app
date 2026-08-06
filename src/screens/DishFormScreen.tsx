@@ -1,5 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, FlatList } from 'react-native';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Platform,
+  KeyboardAvoidingView,
+  ScrollView,
+} from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { openDatabase } from '../db/database';
@@ -128,67 +137,70 @@ export default function DishFormScreen() {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.label}>Name</Text>
-      <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="e.g. Rice bowl" />
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView contentContainerStyle={styles.container}>
+        <Text style={styles.label}>Name</Text>
+        <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="e.g. Rice bowl" />
 
-      <Text style={styles.label}>Ingredients</Text>
-      {items.map((item, index) => (
-        <View key={`${item.productId}-${index}`} style={styles.ingredientRow}>
-          <Text style={styles.ingredientName}>{item.productName}</Text>
-          <TextInput
-            style={styles.gramsInput}
-            value={item.gramsText}
-            onChangeText={(text) => setGrams(index, text)}
-            placeholder="g"
-            keyboardType="numeric"
-          />
-          <TouchableOpacity onPress={() => removeIngredient(index)}>
-            <Text style={styles.removeText}>Remove</Text>
-          </TouchableOpacity>
-        </View>
-      ))}
-
-      <TextInput
-        style={styles.input}
-        value={productSearch}
-        onChangeText={setProductSearch}
-        placeholder="Search products to add"
-      />
-      {matches.length > 0 && (
-        <FlatList
-          data={matches}
-          keyExtractor={(item) => item.id}
-          style={styles.matchList}
-          renderItem={({ item }) => (
-            <TouchableOpacity style={styles.matchRow} onPress={() => addIngredient(item)}>
-              <Text>{item.name}</Text>
+        <Text style={styles.label}>Ingredients</Text>
+        {items.map((item, index) => (
+          <View key={`${item.productId}-${index}`} style={styles.ingredientRow}>
+            <Text style={styles.ingredientName}>{item.productName}</Text>
+            <TextInput
+              style={styles.gramsInput}
+              value={item.gramsText}
+              onChangeText={(text) => setGrams(index, text)}
+              placeholder="g"
+              keyboardType="numeric"
+            />
+            <TouchableOpacity onPress={() => removeIngredient(index)}>
+              <Text style={styles.removeText}>Remove</Text>
             </TouchableOpacity>
-          )}
+          </View>
+        ))}
+
+        <TextInput
+          style={styles.input}
+          value={productSearch}
+          onChangeText={setProductSearch}
+          placeholder="Search products to add"
         />
-      )}
+        {matches.length > 0 && (
+          <View style={styles.matchList}>
+            {matches.map((item) => (
+              <TouchableOpacity key={item.id} style={styles.matchRow} onPress={() => addIngredient(item)}>
+                <Text>{item.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
-      <Text style={styles.totals}>
-        Total: {totals.totalWeight} g · {totals.totalCarbs.toFixed(1)} g carbs · {totals.totalW.toFixed(1)} W
-      </Text>
+        <Text style={styles.totals}>
+          Total: {totals.totalWeight} g · {totals.totalCarbs.toFixed(1)} g carbs · {totals.totalW.toFixed(1)} W
+        </Text>
 
-      {error && <Text style={styles.error}>{error}</Text>}
+        {error && <Text style={styles.error}>{error}</Text>}
 
-      <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-        <Text style={styles.saveButtonText}>Save</Text>
-      </TouchableOpacity>
-
-      {dishId && (
-        <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-          <Text style={styles.deleteButtonText}>Delete</Text>
+        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+          <Text style={styles.saveButtonText}>Save</Text>
         </TouchableOpacity>
-      )}
-    </View>
+
+        {dishId && (
+          <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
+            <Text style={styles.deleteButtonText}>Delete</Text>
+          </TouchableOpacity>
+        )}
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 16 },
+  flex: { flex: 1 },
+  container: { padding: 16 },
   label: { fontSize: 13, color: '#555', marginTop: 12 },
   input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 8, marginTop: 4 },
   ingredientRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
