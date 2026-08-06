@@ -3,7 +3,7 @@
   "compilerOptions": {
     "strict": true,
     "lib": ["ESNext", "DOM"],
-    "types": ["jest"]
+    "types": ["jest", "node"]
   },
   "include": ["**/*.ts", "**/*.tsx"]
 }
