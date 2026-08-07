@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
   ingredientName: { flex: 1 },
   gramsInput: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 8, width: 60, marginRight: 8 },
   removeText: { color: '#c62828' },
-  matchList: { maxHeight: 150, borderWidth: 1, borderColor: '#eee', marginTop: 4 },
+  matchList: { borderWidth: 1, borderColor: '#eee', marginTop: 4 },
   matchRow: { padding: 8, borderBottomWidth: 1, borderBottomColor: '#eee' },
   totals: { marginTop: 16, fontWeight: '600' },
   error: { color: '#c62828', marginTop: 12 },
