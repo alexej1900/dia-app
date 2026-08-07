@@ -1,0 +1,225 @@
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Platform,
+  KeyboardAvoidingView,
+  ScrollView,
+} from 'react-native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { openDatabase } from '../db/database';
+import { listProducts, Product } from '../repositories/productsRepo';
+import { createDish, updateDish, deleteDish, getDish } from '../repositories/dishesRepo';
+import { dishTotals } from '../calculations/carbs';
+import type { DishesStackParamList } from '../navigation/RootNavigator';
+
+type Nav = NativeStackNavigationProp<DishesStackParamList, 'DishForm'>;
+type Route = RouteProp<DishesStackParamList, 'DishForm'>;
+
+interface IngredientRow {
+  productId: string;
+  productName: string;
+  carbsPer100g: number;
+  gramsText: string;
+}
+
+export default function DishFormScreen() {
+  const navigation = useNavigation<Nav>();
+  const route = useRoute<Route>();
+  const dishId = route.params?.dishId;
+
+  const [name, setName] = useState('');
+  const [items, setItems] = useState<IngredientRow[]>([]);
+  const [productSearch, setProductSearch] = useState('');
+  const [matches, setMatches] = useState<Product[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!dishId) return;
+    (async () => {
+      const db = await openDatabase();
+      const dish = await getDish(db, dishId);
+      if (dish) {
+        setName(dish.name);
+        setItems(
+          dish.items.map((item) => ({
+            productId: item.productId,
+            productName: item.productName,
+            carbsPer100g: item.carbsPer100g,
+            gramsText: String(item.grams),
+          }))
+        );
+      }
+    })();
+  }, [dishId]);
+
+  useEffect(() => {
+    if (productSearch.trim() === '') {
+      setMatches([]);
+      return;
+    }
+    (async () => {
+      const db = await openDatabase();
+      setMatches(await listProducts(db, productSearch));
+    })();
+  }, [productSearch]);
+
+  const addIngredient = (product: Product) => {
+    if (items.some((item) => item.productId === product.id)) {
+      setError('Already added');
+      return;
+    }
+    setItems((prev) => [
+      ...prev,
+      { productId: product.id, productName: product.name, carbsPer100g: product.carbsPer100g, gramsText: '' },
+    ]);
+    setProductSearch('');
+    setMatches([]);
+  };
+
+  const removeIngredient = (index: number) => {
+    setItems((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const setGrams = (index: number, gramsText: string) => {
+    setItems((prev) => prev.map((item, i) => (i === index ? { ...item, gramsText } : item)));
+  };
+
+  const parsedItems = items.map((item) => ({ ...item, grams: Number(item.gramsText) }));
+  const totals = dishTotals(
+    parsedItems
+      .filter((item) => !Number.isNaN(item.grams) && item.grams > 0)
+      .map((item) => ({ carbsPer100g: item.carbsPer100g, grams: item.grams }))
+  );
+
+  const handleSave = async () => {
+    if (name.trim() === '') {
+      setError('Name is required');
+      return;
+    }
+    if (items.length === 0) {
+      setError('Add at least one ingredient');
+      return;
+    }
+    for (const item of parsedItems) {
+      if (Number.isNaN(item.grams) || item.grams <= 0) {
+        setError(`Enter a valid weight for ${item.productName}`);
+        return;
+      }
+    }
+    setError(null);
+    try {
+      const db = await openDatabase();
+      const input = {
+        name: name.trim(),
+        items: parsedItems.map((item) => ({ productId: item.productId, grams: item.grams })),
+      };
+      if (dishId) {
+        await updateDish(db, dishId, input);
+      } else {
+        await createDish(db, input);
+      }
+      navigation.goBack();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save dish');
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!dishId) return;
+    const db = await openDatabase();
+    await deleteDish(db, dishId);
+    navigation.goBack();
+  };
+
+  return (
+    <KeyboardAvoidingView
+      style={styles.flex}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      <ScrollView contentContainerStyle={styles.container}>
+        <Text style={styles.label}>Name</Text>
+        <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="e.g. Rice bowl" />
+
+        <Text style={styles.label}>Ingredients</Text>
+        {items.map((item, index) => (
+          <View key={`${item.productId}-${index}`} style={styles.ingredientRow}>
+            <Text style={styles.ingredientName}>{item.productName}</Text>
+            <TextInput
+              style={styles.gramsInput}
+              value={item.gramsText}
+              onChangeText={(text) => setGrams(index, text)}
+              placeholder="g"
+              keyboardType="numeric"
+            />
+            <TouchableOpacity onPress={() => removeIngredient(index)}>
+              <Text style={styles.removeText}>Remove</Text>
+            </TouchableOpacity>
+          </View>
+        ))}
+
+        <TextInput
+          style={styles.input}
+          value={productSearch}
+          onChangeText={setProductSearch}
+          placeholder="Search products to add"
+        />
+        {matches.length > 0 && (
+          <View style={styles.matchList}>
+            {matches.map((item) => (
+              <TouchableOpacity key={item.id} style={styles.matchRow} onPress={() => addIngredient(item)}>
+                <Text>{item.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        <Text style={styles.totals}>
+          Total: {totals.totalWeight} g · {totals.totalCarbs.toFixed(1)} g carbs · {totals.totalW.toFixed(1)} W
+        </Text>
+
+        {error && <Text style={styles.error}>{error}</Text>}
+
+        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
+          <Text style={styles.saveButtonText}>Save</Text>
+        </TouchableOpacity>
+
+        {dishId && (
+          <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
+            <Text style={styles.deleteButtonText}>Delete</Text>
+          </TouchableOpacity>
+        )}
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+}
+
+const styles = StyleSheet.create({
+  flex: { flex: 1 },
+  container: { padding: 16 },
+  label: { fontSize: 13, color: '#555', marginTop: 12 },
+  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 8, marginTop: 4 },
+  ingredientRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
+  ingredientName: { flex: 1 },
+  gramsInput: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 8, width: 60, marginRight: 8 },
+  removeText: { color: '#c62828' },
+  matchList: { borderWidth: 1, borderColor: '#eee', marginTop: 4 },
+  matchRow: { padding: 8, borderBottomWidth: 1, borderBottomColor: '#eee' },
+  totals: { marginTop: 16, fontWeight: '600' },
+  error: { color: '#c62828', marginTop: 12 },
+  saveButton: { marginTop: 20, backgroundColor: '#2e7d32', borderRadius: 8, padding: 12, alignItems: 'center' },
+  saveButtonText: { color: '#fff', fontWeight: '600' },
+  deleteButton: {
+    marginTop: 12,
+    borderRadius: 8,
+    padding: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#c62828',
+  },
+  deleteButtonText: { color: '#c62828', fontWeight: '600' },
+});
