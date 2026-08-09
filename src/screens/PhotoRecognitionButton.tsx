@@ -34,11 +34,13 @@ export default function PhotoRecognitionButton({ onRecognized }: Props) {
       setError(null);
       try {
         // Cap the longest edge at ~1024px, scaling the other dimension
-        // proportionally, regardless of orientation.
+        // proportionally, regardless of orientation. Omit the unset key
+        // entirely rather than passing `null` for it: expo-image-manipulator's
+        // web implementation checks `!== undefined` to decide whether a
+        // dimension was requested, so an explicit `null` is treated as a
+        // real (zero) value instead of "auto" and crashes canvas rendering.
         const resizeOptions =
-          pickedPhoto.width >= pickedPhoto.height
-            ? { width: 1024, height: null }
-            : { width: null, height: 1024 };
+          pickedPhoto.width >= pickedPhoto.height ? { width: 1024 } : { height: 1024 };
         const rendered = await manipulatorContext.resize(resizeOptions).renderAsync();
         const saved = await rendered.saveAsync({ format: SaveFormat.JPEG, compress: 0.7, base64: true });
         if (!saved.base64) {
