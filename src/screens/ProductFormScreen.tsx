@@ -34,8 +34,9 @@ export default function ProductFormScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
   const productId = route.params?.productId;
+  const prefillName = route.params?.prefillName;
 
-  const [name, setName] = useState('');
+  const [name, setName] = useState(prefillName ?? '');
   const [carbsText, setCarbsText] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -74,7 +75,8 @@ export default function ProductFormScreen() {
       if (productId) {
         await updateProduct(db, productId, { name: name.trim(), carbsPer100g: carbsValue });
       } else {
-        await createProduct(db, { name: name.trim(), carbsPer100g: carbsValue });
+        const created = await createProduct(db, { name: name.trim(), carbsPer100g: carbsValue });
+        route.params?.onCreated?.(created);
       }
       navigation.goBack();
     } catch (e) {
