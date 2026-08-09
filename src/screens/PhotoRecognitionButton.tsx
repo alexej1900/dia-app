@@ -15,19 +15,31 @@ interface Props {
 const PLACEHOLDER_URI =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
 
+interface PickedPhoto {
+  uri: string;
+  width: number;
+  height: number;
+}
+
 export default function PhotoRecognitionButton({ onRecognized }: Props) {
-  const [pickedUri, setPickedUri] = useState<string | null>(null);
+  const [pickedPhoto, setPickedPhoto] = useState<PickedPhoto | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const manipulatorContext = useImageManipulator(pickedUri ?? PLACEHOLDER_URI);
+  const manipulatorContext = useImageManipulator(pickedPhoto?.uri ?? PLACEHOLDER_URI);
 
   useEffect(() => {
-    if (!pickedUri) return;
+    if (!pickedPhoto) return;
     (async () => {
       setLoading(true);
       setError(null);
       try {
-        const rendered = await manipulatorContext.resize({ width: 1024, height: null }).renderAsync();
+        // Cap the longest edge at ~1024px, scaling the other dimension
+        // proportionally, regardless of orientation.
+        const resizeOptions =
+          pickedPhoto.width >= pickedPhoto.height
+            ? { width: 1024, height: null }
+            : { width: null, height: 1024 };
+        const rendered = await manipulatorContext.resize(resizeOptions).renderAsync();
         const saved = await rendered.saveAsync({ format: SaveFormat.JPEG, compress: 0.7, base64: true });
         if (!saved.base64) {
           throw new DishRecognitionError('Could not process the photo.');
@@ -40,13 +52,13 @@ export default function PhotoRecognitionButton({ onRecognized }: Props) {
         setError(e instanceof Error ? e.message : 'Recognition failed. Try again or add ingredients manually.');
       } finally {
         setLoading(false);
-        setPickedUri(null);
+        setPickedPhoto(null);
       }
     })();
-    // manipulatorContext is derived from pickedUri each render; re-running
-    // this effect only on pickedUri change is intentional.
+    // manipulatorContext is derived from pickedPhoto each render; re-running
+    // this effect only on pickedPhoto change is intentional.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pickedUri]);
+  }, [pickedPhoto]);
 
   const pickFrom = async (source: 'camera' | 'gallery') => {
     setError(null);
@@ -63,7 +75,8 @@ export default function PhotoRecognitionButton({ onRecognized }: Props) {
         ? await ImagePicker.launchCameraAsync({ mediaTypes: ['images'], quality: 0.8 })
         : await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], quality: 0.8 });
     if (result.canceled || result.assets.length === 0) return;
-    setPickedUri(result.assets[0].uri);
+    const asset = result.assets[0];
+    setPickedPhoto({ uri: asset.uri, width: asset.width, height: asset.height });
   };
 
   return (
