@@ -71,7 +71,7 @@ export default function PhotoReviewScreen() {
       <Text style={styles.label}>Recognized ingredients</Text>
       {rows.map((row, index) => (
         <TouchableOpacity key={`${row.name}-${index}`} style={styles.row} onPress={() => toggle(index)}>
-          <Text style={styles.checkbox}>{row.checked ? '☑' : '☐'}</Text>
+          <Text style={styles.checkbox}>{row.checked ? '\u2611' : '\u2610'}</Text>
           <Text style={styles.rowText}>{row.product ? row.product.name : `New: ${row.name}`}</Text>
         </TouchableOpacity>
       ))}
