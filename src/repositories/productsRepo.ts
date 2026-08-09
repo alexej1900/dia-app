@@ -75,6 +75,11 @@ export async function listProducts(db: SqlExecutor, searchTerm = ''): Promise<Pr
   return rows.map(rowToProduct);
 }
 
+export async function getProductByName(db: SqlExecutor, name: string): Promise<Product | null> {
+  const row = await db.getFirstAsync<ProductRow>('SELECT * FROM products WHERE name = ? COLLATE NOCASE', [name]);
+  return row ? rowToProduct(row) : null;
+}
+
 export async function getDishesUsingProduct(
   db: SqlExecutor,
   productId: string
