@@ -42,6 +42,28 @@ describe('recognizeDish', () => {
     await expect(recognizeDish('base64data', [])).rejects.toThrow(DishRecognitionError);
   });
 
+  it('throws a specific DishRecognitionError message when the request times out', async () => {
+    const timeoutError = new DOMException('The operation was aborted due to timeout', 'TimeoutError');
+    global.fetch = jest.fn().mockRejectedValue(timeoutError) as unknown as typeof fetch;
+
+    await expect(recognizeDish('base64data', [])).rejects.toThrow('Recognition timed out');
+  });
+
+  it('passes an AbortSignal to fetch for the client-side timeout', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ items: [] }),
+    }) as unknown as typeof fetch;
+
+    await recognizeDish('base64data', []);
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      'https://worker.example/recognize',
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
+  });
+
   it('throws DishRecognitionError when the response is not ok', async () => {
     global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 502 }) as unknown as typeof fetch;
 

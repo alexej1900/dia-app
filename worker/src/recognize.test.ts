@@ -42,6 +42,16 @@ describe('parseRecognizeRequestBody', () => {
   it('rejects a non-object body', () => {
     expect(() => parseRecognizeRequestBody('nope')).toThrow(RecognizeRequestError);
   });
+
+  it('rejects an image string over the size ceiling', () => {
+    const hugeImage = 'a'.repeat(14_000_001);
+    expect(() => parseRecognizeRequestBody({ image: hugeImage, productNames: [] })).toThrow(RecognizeRequestError);
+  });
+
+  it('accepts an image string right at the size ceiling', () => {
+    const maxImage = 'a'.repeat(14_000_000);
+    expect(() => parseRecognizeRequestBody({ image: maxImage, productNames: [] })).not.toThrow();
+  });
 });
 
 describe('buildAnthropicRequestParams', () => {
@@ -73,12 +83,15 @@ describe('buildAnthropicRequestParams', () => {
 
 describe('parseAnthropicToolResult', () => {
   it('parses matched and unmatched items', () => {
-    const items = parseAnthropicToolResult({
-      items: [
-        { name: 'Chicken breast', matchedProductName: 'Chicken breast' },
-        { name: 'Sauteed spinach', matchedProductName: null },
-      ],
-    });
+    const items = parseAnthropicToolResult(
+      {
+        items: [
+          { name: 'Chicken breast', matchedProductName: 'Chicken breast' },
+          { name: 'Sauteed spinach', matchedProductName: null },
+        ],
+      },
+      ['Chicken breast']
+    );
     expect(items).toEqual([
       { name: 'Chicken breast', matchedProductName: 'Chicken breast' },
       { name: 'Sauteed spinach', matchedProductName: null },
@@ -86,17 +99,30 @@ describe('parseAnthropicToolResult', () => {
   });
 
   it('treats a missing items array as malformed', () => {
-    expect(() => parseAnthropicToolResult({})).toThrow(RecognizeRequestError);
+    expect(() => parseAnthropicToolResult({}, [])).toThrow(RecognizeRequestError);
   });
 
   it('treats an item missing a name as malformed', () => {
-    expect(() => parseAnthropicToolResult({ items: [{ matchedProductName: null }] })).toThrow(
+    expect(() => parseAnthropicToolResult({ items: [{ matchedProductName: null }] }, [])).toThrow(
       RecognizeRequestError
     );
   });
 
   it('treats a non-string, non-null matchedProductName as unmatched rather than failing', () => {
-    const items = parseAnthropicToolResult({ items: [{ name: 'Rice', matchedProductName: 42 }] });
+    const items = parseAnthropicToolResult({ items: [{ name: 'Rice', matchedProductName: 42 }] }, ['Rice']);
+    expect(items).toEqual([{ name: 'Rice', matchedProductName: null }]);
+  });
+
+  it('resolves a case-insensitive matchedProductName to the product list exact casing', () => {
+    const items = parseAnthropicToolResult({ items: [{ name: 'rice', matchedProductName: 'rice' }] }, ['Rice']);
+    expect(items).toEqual([{ name: 'rice', matchedProductName: 'Rice' }]);
+  });
+
+  it('nulls out a matchedProductName that is not in the supplied product list (hallucination guard)', () => {
+    const items = parseAnthropicToolResult(
+      { items: [{ name: 'Rice', matchedProductName: 'Fried Rice' }] },
+      ['Rice']
+    );
     expect(items).toEqual([{ name: 'Rice', matchedProductName: null }]);
   });
 });

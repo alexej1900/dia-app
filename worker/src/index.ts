@@ -12,16 +12,30 @@ export interface Env {
   APP_SHARED_SECRET: string;
 }
 
+const CORS_HEADERS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, X-App-Secret',
+};
+
 function jsonResponse(body: unknown, status: number): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
   });
 }
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+
+    if (request.method === 'OPTIONS' && url.pathname === '/recognize') {
+      return new Response(null, {
+        status: 204,
+        headers: { ...CORS_HEADERS, 'Access-Control-Max-Age': '86400' },
+      });
+    }
+
     if (request.method !== 'POST' || url.pathname !== '/recognize') {
       return jsonResponse({ error: 'Not found' }, 404);
     }
@@ -52,7 +66,7 @@ export default {
     }
 
     try {
-      const items = parseAnthropicToolResult(toolUse.input);
+      const items = parseAnthropicToolResult(toolUse.input, body.productNames);
       return jsonResponse({ items }, 200);
     } catch (e) {
       const status = e instanceof RecognizeRequestError ? e.status : 502;

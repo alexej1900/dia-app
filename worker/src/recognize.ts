@@ -19,6 +19,11 @@ export function checkAuth(providedSecret: string | null, expectedSecret: string)
   return providedSecret !== null && providedSecret === expectedSecret;
 }
 
+// Roughly 10MB of decoded-equivalent size (base64 expands ~4/3), used as a
+// sanity ceiling so a client that skips the resize step gets a clear 400
+// instead of a generic 502 from the Anthropic call.
+const MAX_IMAGE_BASE64_LENGTH = 14_000_000;
+
 export function parseRecognizeRequestBody(body: unknown): RecognizeRequestBody {
   if (typeof body !== 'object' || body === null) {
     throw new RecognizeRequestError('Request body must be a JSON object', 400);
@@ -26,6 +31,9 @@ export function parseRecognizeRequestBody(body: unknown): RecognizeRequestBody {
   const { image, productNames } = body as Record<string, unknown>;
   if (typeof image !== 'string' || image.length === 0) {
     throw new RecognizeRequestError('"image" must be a non-empty base64 string', 400);
+  }
+  if (image.length > MAX_IMAGE_BASE64_LENGTH) {
+    throw new RecognizeRequestError('"image" is too large. Please use a smaller photo.', 400);
   }
   if (!Array.isArray(productNames) || !productNames.every((p) => typeof p === 'string')) {
     throw new RecognizeRequestError('"productNames" must be an array of strings', 400);
@@ -77,7 +85,7 @@ export function buildAnthropicRequestParams(body: RecognizeRequestBody) {
 
   return {
     model: 'claude-haiku-4-5',
-    max_tokens: 1024,
+    max_tokens: 2048,
     tool_choice: { type: 'tool' as const, name: RECOGNIZE_TOOL_NAME },
     tools: [buildToolDefinition()],
     messages: [
@@ -98,7 +106,7 @@ export function buildAnthropicRequestParams(body: RecognizeRequestBody) {
   };
 }
 
-export function parseAnthropicToolResult(input: unknown): RecognizedItem[] {
+export function parseAnthropicToolResult(input: unknown, productNames: string[]): RecognizedItem[] {
   if (typeof input !== 'object' || input === null || !('items' in input)) {
     throw new RecognizeRequestError('Unexpected response shape from recognition model', 502);
   }
@@ -111,9 +119,13 @@ export function parseAnthropicToolResult(input: unknown): RecognizedItem[] {
       throw new RecognizeRequestError('Unexpected item shape from recognition model', 502);
     }
     const { name, matchedProductName } = item as Record<string, unknown>;
+    const resolvedMatch =
+      typeof matchedProductName === 'string'
+        ? (productNames.find((p) => p.toLowerCase() === matchedProductName.toLowerCase()) ?? null)
+        : null;
     return {
       name: name as string,
-      matchedProductName: typeof matchedProductName === 'string' ? matchedProductName : null,
+      matchedProductName: resolvedMatch,
     };
   });
 }

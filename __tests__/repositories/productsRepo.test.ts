@@ -74,4 +74,10 @@ describe('productsRepo', () => {
     await createProduct(db, { name: 'Chicken Breast', carbsPer100g: 0 });
     expect(await getProductByName(db, 'Chicken')).toBeNull();
   });
+
+  it('finds a product by name ignoring incidental leading/trailing whitespace', async () => {
+    await createProduct(db, { name: 'Chicken Breast', carbsPer100g: 0 });
+    const found = await getProductByName(db, '  Chicken Breast  ');
+    expect(found?.name).toBe('Chicken Breast');
+  });
 });

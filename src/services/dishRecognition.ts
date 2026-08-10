@@ -18,8 +18,12 @@ export async function recognizeDish(imageBase64: string, productNames: string[])
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-App-Secret': apiSecret },
       body: JSON.stringify({ image: imageBase64, productNames }),
+      signal: AbortSignal.timeout(30_000),
     });
-  } catch {
+  } catch (e) {
+    if (typeof e === 'object' && e !== null && 'name' in e && e.name === 'TimeoutError') {
+      throw new DishRecognitionError('Recognition timed out. Try again or add ingredients manually.');
+    }
     throw new DishRecognitionError('Could not reach recognition service. Check your connection.');
   }
 
