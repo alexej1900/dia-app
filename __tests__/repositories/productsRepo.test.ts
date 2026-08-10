@@ -5,6 +5,7 @@ import {
   getProduct,
   listProducts,
   deleteProduct,
+  getProductByName,
   ProductInUseError,
 } from '../../src/repositories/productsRepo';
 import { SqlExecutor } from '../../src/db/sqlExecutor';
@@ -61,5 +62,22 @@ describe('productsRepo', () => {
 
     await expect(deleteProduct(db, product.id)).rejects.toThrow(ProductInUseError);
     expect(await getProduct(db, product.id)).not.toBeNull();
+  });
+
+  it('finds a product by exact, case-insensitive name match', async () => {
+    await createProduct(db, { name: 'Chicken Breast', carbsPer100g: 0 });
+    const found = await getProductByName(db, 'chicken breast');
+    expect(found?.name).toBe('Chicken Breast');
+  });
+
+  it('returns null when no product matches the name exactly', async () => {
+    await createProduct(db, { name: 'Chicken Breast', carbsPer100g: 0 });
+    expect(await getProductByName(db, 'Chicken')).toBeNull();
+  });
+
+  it('finds a product by name ignoring incidental leading/trailing whitespace', async () => {
+    await createProduct(db, { name: 'Chicken Breast', carbsPer100g: 0 });
+    const found = await getProductByName(db, '  Chicken Breast  ');
+    expect(found?.name).toBe('Chicken Breast');
   });
 });

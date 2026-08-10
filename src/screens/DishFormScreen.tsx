@@ -15,6 +15,8 @@ import { openDatabase } from '../db/database';
 import { listProducts, Product } from '../repositories/productsRepo';
 import { createDish, updateDish, deleteDish, getDish } from '../repositories/dishesRepo';
 import { dishTotals } from '../calculations/carbs';
+import PhotoRecognitionButton from './PhotoRecognitionButton';
+import type { RecognizedItem } from '../services/dishRecognition';
 import type { DishesStackParamList } from '../navigation/RootNavigator';
 
 type Nav = NativeStackNavigationProp<DishesStackParamList, 'DishForm'>;
@@ -37,6 +39,29 @@ export default function DishFormScreen() {
   const [productSearch, setProductSearch] = useState('');
   const [matches, setMatches] = useState<Product[]>([]);
   const [error, setError] = useState<string | null>(null);
+
+  const [pendingUnmatchedNames, setPendingUnmatchedNames] = useState<string[]>([]);
+
+  const handleRecognized = (recognizedItems: RecognizedItem[]) => {
+    navigation.navigate('PhotoReview', {
+      items: recognizedItems,
+      onConfirm: (result) => {
+        result.matchedProducts.forEach(addIngredient);
+        setPendingUnmatchedNames(result.unmatchedNames);
+      },
+    });
+  };
+
+  useEffect(() => {
+    if (pendingUnmatchedNames.length === 0) return;
+    navigation.navigate('ProductForm', {
+      prefillName: pendingUnmatchedNames[0],
+      onCreated: (product) => {
+        addIngredient(product);
+        setPendingUnmatchedNames((prev) => prev.slice(1));
+      },
+    });
+  }, [pendingUnmatchedNames]);
 
   useEffect(() => {
     if (!dishId) return;
@@ -69,14 +94,16 @@ export default function DishFormScreen() {
   }, [productSearch]);
 
   const addIngredient = (product: Product) => {
-    if (items.some((item) => item.productId === product.id)) {
-      setError('Already added');
-      return;
-    }
-    setItems((prev) => [
-      ...prev,
-      { productId: product.id, productName: product.name, carbsPer100g: product.carbsPer100g, gramsText: '' },
-    ]);
+    setItems((prev) => {
+      if (prev.some((item) => item.productId === product.id)) {
+        setError('Already added');
+        return prev;
+      }
+      return [
+        ...prev,
+        { productId: product.id, productName: product.name, carbsPer100g: product.carbsPer100g, gramsText: '' },
+      ];
+    });
     setProductSearch('');
     setMatches([]);
   };
@@ -146,6 +173,7 @@ export default function DishFormScreen() {
         <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="e.g. Rice bowl" />
 
         <Text style={styles.label}>Ingredients</Text>
+        <PhotoRecognitionButton onRecognized={handleRecognized} />
         {items.map((item, index) => (
           <View key={`${item.productId}-${index}`} style={styles.ingredientRow}>
             <Text style={styles.ingredientName}>{item.productName}</Text>

@@ -6,15 +6,31 @@ import ProductsListScreen from '../screens/ProductsListScreen';
 import ProductFormScreen from '../screens/ProductFormScreen';
 import DishesListScreen from '../screens/DishesListScreen';
 import DishFormScreen from '../screens/DishFormScreen';
+import PhotoReviewScreen from '../screens/PhotoReviewScreen';
+import type { Product } from '../repositories/productsRepo';
+import type { RecognizedItem } from '../services/dishRecognition';
+
+export type ProductFormParams = {
+  productId?: string;
+  prefillName?: string;
+  onCreated?: (product: Product) => void;
+};
 
 export type ProductsStackParamList = {
   ProductsList: undefined;
-  ProductForm: { productId?: string };
+  ProductForm: ProductFormParams;
+};
+
+export type PhotoReviewParams = {
+  items: RecognizedItem[];
+  onConfirm: (result: { matchedProducts: Product[]; unmatchedNames: string[] }) => void;
 };
 
 export type DishesStackParamList = {
   DishesList: undefined;
   DishForm: { dishId?: string };
+  PhotoReview: PhotoReviewParams;
+  ProductForm: ProductFormParams;
 };
 
 const ProductsStack = createNativeStackNavigator<ProductsStackParamList>();
@@ -35,6 +51,12 @@ function DishesStackNavigator() {
     <DishesStack.Navigator>
       <DishesStack.Screen name="DishesList" component={DishesListScreen} options={{ title: 'Dishes' }} />
       <DishesStack.Screen name="DishForm" component={DishFormScreen} options={{ title: 'Dish' }} />
+      <DishesStack.Screen
+        name="PhotoReview"
+        component={PhotoReviewScreen}
+        options={{ title: 'Recognized Ingredients' }}
+      />
+      <DishesStack.Screen name="ProductForm" component={ProductFormScreen} options={{ title: 'Product' }} />
     </DishesStack.Navigator>
   );
 }

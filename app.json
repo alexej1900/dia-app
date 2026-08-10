@@ -20,6 +20,16 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow $(PRODUCT_NAME) to access your photos to recognize dish ingredients.",
+          "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera to photograph a dish.",
+          "microphonePermission": false
+        }
+      ]
+    ]
   }
 }
