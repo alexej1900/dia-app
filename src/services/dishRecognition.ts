@@ -1,6 +1,7 @@
 export interface RecognizedItem {
   name: string;
   matchedProductName: string | null;
+  estimatedGrams: number | null;
 }
 
 export class DishRecognitionError extends Error {}
