@@ -1,6 +1,7 @@
 export interface RecognizedItem {
   name: string;
   matchedProductName: string | null;
+  estimatedGrams: number | null;
 }
 
 export interface RecognizeRequestBody {
@@ -65,8 +66,13 @@ function buildToolDefinition() {
                 description:
                   "The exact matching name from the supplied product list, if this ingredient corresponds to one of them in meaning. Null if it does not match any of them.",
               },
+              estimatedGrams: {
+                type: ['integer', 'null'],
+                description:
+                  "Your best-guess weight of this ingredient's visible portion in grams, based on typical portion sizes, plate/bowl scale, and food density. Null if you cannot judge it from the photo.",
+              },
             },
-            required: ['name', 'matchedProductName'],
+            required: ['name', 'matchedProductName', 'estimatedGrams'],
             additionalProperties: false,
           },
         },
@@ -98,7 +104,7 @@ export function buildAnthropicRequestParams(body: RecognizeRequestBody) {
           },
           {
             type: 'text' as const,
-            text: `Identify every distinct ingredient visible in this dish photo. ${productListText}\n\nFor each ingredient, report its name and, if it matches one of the listed products in meaning (not necessarily exact wording), report that product's exact name as matchedProductName. Otherwise set matchedProductName to null.`,
+            text: `Identify every distinct ingredient visible in this dish photo. ${productListText}\n\nFor each ingredient, report its name and, if it matches one of the listed products in meaning (not necessarily exact wording), report that product's exact name as matchedProductName. Otherwise set matchedProductName to null.\n\nAlso estimate that ingredient's visible portion weight in grams, using ordinary visual cues such as plate or bowl size, how full a container looks, and typical serving sizes for that kind of food. No physical reference object is provided in the photo, so use your best judgment. If you genuinely cannot judge it, set estimatedGrams to null.`,
           },
         ],
       },
@@ -118,14 +124,19 @@ export function parseAnthropicToolResult(input: unknown, productNames: string[])
     if (typeof item !== 'object' || item === null || typeof (item as Record<string, unknown>).name !== 'string') {
       throw new RecognizeRequestError('Unexpected item shape from recognition model', 502);
     }
-    const { name, matchedProductName } = item as Record<string, unknown>;
+    const { name, matchedProductName, estimatedGrams } = item as Record<string, unknown>;
     const resolvedMatch =
       typeof matchedProductName === 'string'
         ? (productNames.find((p) => p.toLowerCase() === matchedProductName.toLowerCase()) ?? null)
         : null;
+    const resolvedEstimatedGrams =
+      typeof estimatedGrams === 'number' && Number.isFinite(estimatedGrams) && estimatedGrams > 0
+        ? Math.round(estimatedGrams)
+        : null;
     return {
       name: name as string,
       matchedProductName: resolvedMatch,
+      estimatedGrams: resolvedEstimatedGrams,
     };
   });
 }
