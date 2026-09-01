@@ -192,4 +192,12 @@ describe('parseAnthropicToolResult — estimatedGrams', () => {
     );
     expect(items[0].estimatedGrams).toBeNull();
   });
+
+  it('nulls out an estimate that rounds to zero or negative (regression: 0.3 -> rounds to 0)', () => {
+    const items = parseAnthropicToolResult(
+      { items: [{ name: 'Rice', matchedProductName: null, estimatedGrams: 0.3 }] },
+      []
+    );
+    expect(items[0].estimatedGrams).toBeNull();
+  });
 });

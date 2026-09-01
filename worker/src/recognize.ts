@@ -129,10 +129,9 @@ export function parseAnthropicToolResult(input: unknown, productNames: string[])
       typeof matchedProductName === 'string'
         ? (productNames.find((p) => p.toLowerCase() === matchedProductName.toLowerCase()) ?? null)
         : null;
-    const resolvedEstimatedGrams =
-      typeof estimatedGrams === 'number' && Number.isFinite(estimatedGrams) && estimatedGrams > 0
-        ? Math.round(estimatedGrams)
-        : null;
+    const roundedEstimatedGrams =
+      typeof estimatedGrams === 'number' && Number.isFinite(estimatedGrams) ? Math.round(estimatedGrams) : null;
+    const resolvedEstimatedGrams = roundedEstimatedGrams !== null && roundedEstimatedGrams > 0 ? roundedEstimatedGrams : null;
     return {
       name: name as string,
       matchedProductName: resolvedMatch,
