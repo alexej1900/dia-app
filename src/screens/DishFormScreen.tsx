@@ -18,16 +18,10 @@ import { dishTotals } from '../calculations/carbs';
 import PhotoRecognitionButton from './PhotoRecognitionButton';
 import type { RecognizedItem } from '../services/dishRecognition';
 import type { DishesStackParamList } from '../navigation/RootNavigator';
+import { buildIngredientRow, applyGramsEdit, IngredientRow } from './dishFormHelpers';
 
 type Nav = NativeStackNavigationProp<DishesStackParamList, 'DishForm'>;
 type Route = RouteProp<DishesStackParamList, 'DishForm'>;
-
-interface IngredientRow {
-  productId: string;
-  productName: string;
-  carbsPer100g: number;
-  gramsText: string;
-}
 
 export default function DishFormScreen() {
   const navigation = useNavigation<Nav>();
@@ -40,13 +34,15 @@ export default function DishFormScreen() {
   const [matches, setMatches] = useState<Product[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const [pendingUnmatchedNames, setPendingUnmatchedNames] = useState<string[]>([]);
+  const [pendingUnmatchedNames, setPendingUnmatchedNames] = useState<
+    { name: string; estimatedGrams: number | null }[]
+  >([]);
 
   const handleRecognized = (recognizedItems: RecognizedItem[]) => {
     navigation.navigate('PhotoReview', {
       items: recognizedItems,
       onConfirm: (result) => {
-        result.matchedProducts.forEach(addIngredient);
+        result.matchedProducts.forEach(({ product, estimatedGrams }) => addIngredient(product, estimatedGrams));
         setPendingUnmatchedNames(result.unmatchedNames);
       },
     });
@@ -54,10 +50,11 @@ export default function DishFormScreen() {
 
   useEffect(() => {
     if (pendingUnmatchedNames.length === 0) return;
+    const next = pendingUnmatchedNames[0];
     navigation.navigate('ProductForm', {
-      prefillName: pendingUnmatchedNames[0],
+      prefillName: next.name,
       onCreated: (product) => {
-        addIngredient(product);
+        addIngredient(product, next.estimatedGrams);
         setPendingUnmatchedNames((prev) => prev.slice(1));
       },
     });
@@ -76,6 +73,7 @@ export default function DishFormScreen() {
             productName: item.productName,
             carbsPer100g: item.carbsPer100g,
             gramsText: String(item.grams),
+            isEstimated: false,
           }))
         );
       }
@@ -93,16 +91,13 @@ export default function DishFormScreen() {
     })();
   }, [productSearch]);
 
-  const addIngredient = (product: Product) => {
+  const addIngredient = (product: Product, estimatedGrams: number | null = null) => {
     setItems((prev) => {
       if (prev.some((item) => item.productId === product.id)) {
         setError('Already added');
         return prev;
       }
-      return [
-        ...prev,
-        { productId: product.id, productName: product.name, carbsPer100g: product.carbsPer100g, gramsText: '' },
-      ];
+      return [...prev, buildIngredientRow(product, estimatedGrams)];
     });
     setProductSearch('');
     setMatches([]);
@@ -113,7 +108,7 @@ export default function DishFormScreen() {
   };
 
   const setGrams = (index: number, gramsText: string) => {
-    setItems((prev) => prev.map((item, i) => (i === index ? { ...item, gramsText } : item)));
+    setItems((prev) => prev.map((item, i) => (i === index ? applyGramsEdit(item, gramsText) : item)));
   };
 
   const parsedItems = items.map((item) => ({ ...item, grams: Number(item.gramsText) }));
@@ -178,12 +173,13 @@ export default function DishFormScreen() {
           <View key={`${item.productId}-${index}`} style={styles.ingredientRow}>
             <Text style={styles.ingredientName}>{item.productName}</Text>
             <TextInput
-              style={styles.gramsInput}
+              style={[styles.gramsInput, item.isEstimated && styles.gramsInputEstimated]}
               value={item.gramsText}
               onChangeText={(text) => setGrams(index, text)}
               placeholder="g"
               keyboardType="numeric"
             />
+            {item.isEstimated && <Text style={styles.estimatedLabel}>(estimated)</Text>}
             <TouchableOpacity onPress={() => removeIngredient(index)}>
               <Text style={styles.removeText}>Remove</Text>
             </TouchableOpacity>
@@ -234,6 +230,8 @@ const styles = StyleSheet.create({
   ingredientRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
   ingredientName: { flex: 1 },
   gramsInput: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 8, width: 60, marginRight: 8 },
+  gramsInputEstimated: { fontStyle: 'italic', color: '#777' },
+  estimatedLabel: { fontSize: 11, color: '#777', marginRight: 8 },
   removeText: { color: '#c62828' },
   matchList: { borderWidth: 1, borderColor: '#eee', marginTop: 4 },
   matchRow: { padding: 8, borderBottomWidth: 1, borderBottomColor: '#eee' },

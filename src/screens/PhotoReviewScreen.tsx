@@ -12,6 +12,7 @@ type Route = RouteProp<DishesStackParamList, 'PhotoReview'>;
 interface ReviewRow {
   name: string;
   product: Product | null;
+  estimatedGrams: number | null;
   checked: boolean;
 }
 
@@ -28,7 +29,7 @@ export default function PhotoReviewScreen() {
       const resolved = await Promise.all(
         items.map(async (item) => {
           const product = item.matchedProductName ? await getProductByName(db, item.matchedProductName) : null;
-          return { name: item.name, product, checked: true };
+          return { name: item.name, product, estimatedGrams: item.estimatedGrams, checked: true };
         })
       );
       setRows(resolved);
@@ -41,8 +42,12 @@ export default function PhotoReviewScreen() {
 
   const handleConfirm = () => {
     if (!rows) return;
-    const matchedProducts = rows.filter((r) => r.checked && r.product).map((r) => r.product as Product);
-    const unmatchedNames = rows.filter((r) => r.checked && !r.product).map((r) => r.name);
+    const matchedProducts = rows
+      .filter((r) => r.checked && r.product)
+      .map((r) => ({ product: r.product as Product, estimatedGrams: r.estimatedGrams }));
+    const unmatchedNames = rows
+      .filter((r) => r.checked && !r.product)
+      .map((r) => ({ name: r.name, estimatedGrams: r.estimatedGrams }));
     onConfirm({ matchedProducts, unmatchedNames });
     navigation.goBack();
   };
