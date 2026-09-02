@@ -9,12 +9,16 @@ export interface IngredientRow {
 }
 
 export function buildIngredientRow(product: Product, estimatedGrams: number | null = null): IngredientRow {
+  const resolvedEstimate =
+    typeof estimatedGrams === 'number' && Number.isFinite(estimatedGrams) && Math.round(estimatedGrams) > 0
+      ? Math.round(estimatedGrams)
+      : null;
   return {
     productId: product.id,
     productName: product.name,
     carbsPer100g: product.carbsPer100g,
-    gramsText: estimatedGrams !== null ? String(estimatedGrams) : '',
-    isEstimated: estimatedGrams !== null,
+    gramsText: resolvedEstimate !== null ? String(resolvedEstimate) : '',
+    isEstimated: resolvedEstimate !== null,
   };
 }
 

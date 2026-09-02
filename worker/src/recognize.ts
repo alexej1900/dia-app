@@ -25,6 +25,11 @@ export function checkAuth(providedSecret: string | null, expectedSecret: string)
 // instead of a generic 502 from the Anthropic call.
 const MAX_IMAGE_BASE64_LENGTH = 14_000_000;
 
+// A hallucinated portion weight (e.g. thousands of grams for a plate of rice) should
+// fail soft to null rather than flow through as a plausible estimate. 5kg is generous
+// for any single dish/ingredient portion.
+const MAX_PLAUSIBLE_ESTIMATED_GRAMS = 5000;
+
 export function parseRecognizeRequestBody(body: unknown): RecognizeRequestBody {
   if (typeof body !== 'object' || body === null) {
     throw new RecognizeRequestError('Request body must be a JSON object', 400);
@@ -131,7 +136,10 @@ export function parseAnthropicToolResult(input: unknown, productNames: string[])
         : null;
     const roundedEstimatedGrams =
       typeof estimatedGrams === 'number' && Number.isFinite(estimatedGrams) ? Math.round(estimatedGrams) : null;
-    const resolvedEstimatedGrams = roundedEstimatedGrams !== null && roundedEstimatedGrams > 0 ? roundedEstimatedGrams : null;
+    const resolvedEstimatedGrams =
+      roundedEstimatedGrams !== null && roundedEstimatedGrams > 0 && roundedEstimatedGrams <= MAX_PLAUSIBLE_ESTIMATED_GRAMS
+        ? roundedEstimatedGrams
+        : null;
     return {
       name: name as string,
       matchedProductName: resolvedMatch,

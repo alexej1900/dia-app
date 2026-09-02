@@ -3,18 +3,12 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { openDatabase } from '../db/database';
-import { getProductByName, Product } from '../repositories/productsRepo';
+import { getProductByName } from '../repositories/productsRepo';
 import type { DishesStackParamList } from '../navigation/RootNavigator';
+import { splitReviewRows, ReviewRow } from './photoReviewHelpers';
 
 type Nav = NativeStackNavigationProp<DishesStackParamList, 'PhotoReview'>;
 type Route = RouteProp<DishesStackParamList, 'PhotoReview'>;
-
-interface ReviewRow {
-  name: string;
-  product: Product | null;
-  estimatedGrams: number | null;
-  checked: boolean;
-}
 
 export default function PhotoReviewScreen() {
   const navigation = useNavigation<Nav>();
@@ -42,13 +36,7 @@ export default function PhotoReviewScreen() {
 
   const handleConfirm = () => {
     if (!rows) return;
-    const matchedProducts = rows
-      .filter((r) => r.checked && r.product)
-      .map((r) => ({ product: r.product as Product, estimatedGrams: r.estimatedGrams }));
-    const unmatchedNames = rows
-      .filter((r) => r.checked && !r.product)
-      .map((r) => ({ name: r.name, estimatedGrams: r.estimatedGrams }));
-    onConfirm({ matchedProducts, unmatchedNames });
+    onConfirm(splitReviewRows(rows));
     navigation.goBack();
   };
 

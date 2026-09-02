@@ -77,3 +77,4 @@ No new error states are introduced. If `estimatedGrams` comes back `null`/missin
 - Per-item confidence scores on the estimate.
 - A dish-level "totals include unverified estimates" warning banner.
 - Combining recognition + portion into a final carb total (Module 4).
+- Persisting the "estimated" flag past save — today it exists only in the dish form's in-memory state and is lost once the dish is saved (whether or not the user reviewed/edited the value). Module 4, which computes the final carb/dose-relevant total, must not assume that a saved dish's grams values were user-verified rather than AI guesses; this is a known gap this module intentionally does not close, since fixing it needs a schema change (an `is_estimated` column on `dish_items` + migration) that's out of this module's scope.

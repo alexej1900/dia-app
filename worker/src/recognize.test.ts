@@ -200,4 +200,20 @@ describe('parseAnthropicToolResult — estimatedGrams', () => {
     );
     expect(items[0].estimatedGrams).toBeNull();
   });
+
+  it('nulls out an implausibly large estimate (hallucination guard)', () => {
+    const items = parseAnthropicToolResult(
+      { items: [{ name: 'Rice', matchedProductName: null, estimatedGrams: 50000 }] },
+      []
+    );
+    expect(items[0].estimatedGrams).toBeNull();
+  });
+
+  it('accepts an estimate right at the plausibility ceiling', () => {
+    const items = parseAnthropicToolResult(
+      { items: [{ name: 'Rice', matchedProductName: null, estimatedGrams: 5000 }] },
+      []
+    );
+    expect(items[0].estimatedGrams).toBe(5000);
+  });
 });

@@ -33,6 +33,24 @@ describe('buildIngredientRow', () => {
     expect(row.gramsText).toBe('');
     expect(row.isEstimated).toBe(false);
   });
+
+  it('leaves gramsText blank and unflagged when the estimate is zero', () => {
+    const row = buildIngredientRow(product, 0);
+    expect(row.gramsText).toBe('');
+    expect(row.isEstimated).toBe(false);
+  });
+
+  it('rounds a non-integer estimate', () => {
+    const row = buildIngredientRow(product, 12.7);
+    expect(row.gramsText).toBe('13');
+    expect(row.isEstimated).toBe(true);
+  });
+
+  it('defensively rejects a value that is not actually a number at runtime, despite the TS type', () => {
+    const row = buildIngredientRow(product, '150' as unknown as number);
+    expect(row.gramsText).toBe('');
+    expect(row.isEstimated).toBe(false);
+  });
 });
 
 describe('applyGramsEdit', () => {
