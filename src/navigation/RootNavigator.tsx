@@ -23,7 +23,10 @@ export type ProductsStackParamList = {
 
 export type PhotoReviewParams = {
   items: RecognizedItem[];
-  onConfirm: (result: { matchedProducts: Product[]; unmatchedNames: string[] }) => void;
+  onConfirm: (result: {
+    matchedProducts: { product: Product; estimatedGrams: number | null }[];
+    unmatchedNames: { name: string; estimatedGrams: number | null }[];
+  }) => void;
 };
 
 export type DishesStackParamList = {

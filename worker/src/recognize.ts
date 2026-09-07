@@ -1,6 +1,7 @@
 export interface RecognizedItem {
   name: string;
   matchedProductName: string | null;
+  estimatedGrams: number | null;
 }
 
 export interface RecognizeRequestBody {
@@ -23,6 +24,11 @@ export function checkAuth(providedSecret: string | null, expectedSecret: string)
 // sanity ceiling so a client that skips the resize step gets a clear 400
 // instead of a generic 502 from the Anthropic call.
 const MAX_IMAGE_BASE64_LENGTH = 14_000_000;
+
+// A hallucinated portion weight (e.g. thousands of grams for a plate of rice) should
+// fail soft to null rather than flow through as a plausible estimate. 5kg is generous
+// for any single dish/ingredient portion.
+const MAX_PLAUSIBLE_ESTIMATED_GRAMS = 5000;
 
 export function parseRecognizeRequestBody(body: unknown): RecognizeRequestBody {
   if (typeof body !== 'object' || body === null) {
@@ -65,8 +71,13 @@ function buildToolDefinition() {
                 description:
                   "The exact matching name from the supplied product list, if this ingredient corresponds to one of them in meaning. Null if it does not match any of them.",
               },
+              estimatedGrams: {
+                type: ['integer', 'null'],
+                description:
+                  "Your best-guess weight of this ingredient's visible portion in grams, based on typical portion sizes, plate/bowl scale, and food density. Null if you cannot judge it from the photo.",
+              },
             },
-            required: ['name', 'matchedProductName'],
+            required: ['name', 'matchedProductName', 'estimatedGrams'],
             additionalProperties: false,
           },
         },
@@ -98,7 +109,7 @@ export function buildAnthropicRequestParams(body: RecognizeRequestBody) {
           },
           {
             type: 'text' as const,
-            text: `Identify every distinct ingredient visible in this dish photo. ${productListText}\n\nFor each ingredient, report its name and, if it matches one of the listed products in meaning (not necessarily exact wording), report that product's exact name as matchedProductName. Otherwise set matchedProductName to null.`,
+            text: `Identify every distinct ingredient visible in this dish photo. ${productListText}\n\nFor each ingredient, report its name and, if it matches one of the listed products in meaning (not necessarily exact wording), report that product's exact name as matchedProductName. Otherwise set matchedProductName to null.\n\nAlso estimate that ingredient's visible portion weight in grams, using ordinary visual cues such as plate or bowl size, how full a container looks, and typical serving sizes for that kind of food. No physical reference object is provided in the photo, so use your best judgment. If you genuinely cannot judge it, set estimatedGrams to null.`,
           },
         ],
       },
@@ -118,14 +129,21 @@ export function parseAnthropicToolResult(input: unknown, productNames: string[])
     if (typeof item !== 'object' || item === null || typeof (item as Record<string, unknown>).name !== 'string') {
       throw new RecognizeRequestError('Unexpected item shape from recognition model', 502);
     }
-    const { name, matchedProductName } = item as Record<string, unknown>;
+    const { name, matchedProductName, estimatedGrams } = item as Record<string, unknown>;
     const resolvedMatch =
       typeof matchedProductName === 'string'
         ? (productNames.find((p) => p.toLowerCase() === matchedProductName.toLowerCase()) ?? null)
         : null;
+    const roundedEstimatedGrams =
+      typeof estimatedGrams === 'number' && Number.isFinite(estimatedGrams) ? Math.round(estimatedGrams) : null;
+    const resolvedEstimatedGrams =
+      roundedEstimatedGrams !== null && roundedEstimatedGrams > 0 && roundedEstimatedGrams <= MAX_PLAUSIBLE_ESTIMATED_GRAMS
+        ? roundedEstimatedGrams
+        : null;
     return {
       name: name as string,
       matchedProductName: resolvedMatch,
+      estimatedGrams: resolvedEstimatedGrams,
     };
   });
 }

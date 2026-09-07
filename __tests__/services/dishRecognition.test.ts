@@ -76,4 +76,18 @@ describe('recognizeDish', () => {
 
     await expect(recognizeDish('base64data', [])).rejects.toThrow(DishRecognitionError);
   });
+
+  it('passes through estimatedGrams from the response', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        items: [{ name: 'Rice', matchedProductName: 'Rice', estimatedGrams: 150 }],
+      }),
+    }) as unknown as typeof fetch;
+
+    const items = await recognizeDish('base64data', ['Rice']);
+
+    expect(items).toEqual([{ name: 'Rice', matchedProductName: 'Rice', estimatedGrams: 150 }]);
+  });
 });

@@ -79,6 +79,21 @@ describe('buildAnthropicRequestParams', () => {
     expect(textBlock?.text).toContain('Rice');
     expect(textBlock?.text).toContain('Chicken breast');
   });
+
+  it('includes estimatedGrams as a required, nullable field in the tool schema', () => {
+    const params = buildAnthropicRequestParams({ image: 'abc', productNames: [] });
+    const itemSchema = params.tools[0].input_schema.properties.items.items;
+    expect(itemSchema.properties.estimatedGrams).toBeDefined();
+    expect(itemSchema.properties.estimatedGrams.type).toEqual(['integer', 'null']);
+    expect(itemSchema.required).toContain('estimatedGrams');
+  });
+
+  it('asks the model to estimate portion weight in the prompt text', () => {
+    const params = buildAnthropicRequestParams({ image: 'abc', productNames: [] });
+    const content = params.messages[0].content;
+    const textBlock = content.find((b) => b.type === 'text');
+    expect(textBlock?.text).toContain('grams');
+  });
 });
 
 describe('parseAnthropicToolResult', () => {
@@ -93,8 +108,8 @@ describe('parseAnthropicToolResult', () => {
       ['Chicken breast']
     );
     expect(items).toEqual([
-      { name: 'Chicken breast', matchedProductName: 'Chicken breast' },
-      { name: 'Sauteed spinach', matchedProductName: null },
+      { name: 'Chicken breast', matchedProductName: 'Chicken breast', estimatedGrams: null },
+      { name: 'Sauteed spinach', matchedProductName: null, estimatedGrams: null },
     ]);
   });
 
@@ -110,12 +125,12 @@ describe('parseAnthropicToolResult', () => {
 
   it('treats a non-string, non-null matchedProductName as unmatched rather than failing', () => {
     const items = parseAnthropicToolResult({ items: [{ name: 'Rice', matchedProductName: 42 }] }, ['Rice']);
-    expect(items).toEqual([{ name: 'Rice', matchedProductName: null }]);
+    expect(items).toEqual([{ name: 'Rice', matchedProductName: null, estimatedGrams: null }]);
   });
 
   it('resolves a case-insensitive matchedProductName to the product list exact casing', () => {
     const items = parseAnthropicToolResult({ items: [{ name: 'rice', matchedProductName: 'rice' }] }, ['Rice']);
-    expect(items).toEqual([{ name: 'rice', matchedProductName: 'Rice' }]);
+    expect(items).toEqual([{ name: 'rice', matchedProductName: 'Rice', estimatedGrams: null }]);
   });
 
   it('nulls out a matchedProductName that is not in the supplied product list (hallucination guard)', () => {
@@ -123,6 +138,82 @@ describe('parseAnthropicToolResult', () => {
       { items: [{ name: 'Rice', matchedProductName: 'Fried Rice' }] },
       ['Rice']
     );
-    expect(items).toEqual([{ name: 'Rice', matchedProductName: null }]);
+    expect(items).toEqual([{ name: 'Rice', matchedProductName: null, estimatedGrams: null }]);
+  });
+});
+
+describe('parseAnthropicToolResult — estimatedGrams', () => {
+  it('passes through a valid positive integer estimate', () => {
+    const items = parseAnthropicToolResult(
+      { items: [{ name: 'Rice', matchedProductName: null, estimatedGrams: 150 }] },
+      []
+    );
+    expect(items).toEqual([{ name: 'Rice', matchedProductName: null, estimatedGrams: 150 }]);
+  });
+
+  it('rounds a non-integer estimate defensively', () => {
+    const items = parseAnthropicToolResult(
+      { items: [{ name: 'Rice', matchedProductName: null, estimatedGrams: 150.6 }] },
+      []
+    );
+    expect(items[0].estimatedGrams).toBe(151);
+  });
+
+  it('nulls out an explicit null estimate', () => {
+    const items = parseAnthropicToolResult(
+      { items: [{ name: 'Rice', matchedProductName: null, estimatedGrams: null }] },
+      []
+    );
+    expect(items[0].estimatedGrams).toBeNull();
+  });
+
+  it('nulls out a missing estimatedGrams field', () => {
+    const items = parseAnthropicToolResult({ items: [{ name: 'Rice', matchedProductName: null }] }, []);
+    expect(items[0].estimatedGrams).toBeNull();
+  });
+
+  it('nulls out a zero or negative estimate', () => {
+    const items = parseAnthropicToolResult(
+      { items: [{ name: 'Rice', matchedProductName: null, estimatedGrams: 0 }] },
+      []
+    );
+    expect(items[0].estimatedGrams).toBeNull();
+    const items2 = parseAnthropicToolResult(
+      { items: [{ name: 'Rice', matchedProductName: null, estimatedGrams: -5 }] },
+      []
+    );
+    expect(items2[0].estimatedGrams).toBeNull();
+  });
+
+  it('nulls out a non-numeric estimate', () => {
+    const items = parseAnthropicToolResult(
+      { items: [{ name: 'Rice', matchedProductName: null, estimatedGrams: 'a lot' }] },
+      []
+    );
+    expect(items[0].estimatedGrams).toBeNull();
+  });
+
+  it('nulls out an estimate that rounds to zero or negative (regression: 0.3 -> rounds to 0)', () => {
+    const items = parseAnthropicToolResult(
+      { items: [{ name: 'Rice', matchedProductName: null, estimatedGrams: 0.3 }] },
+      []
+    );
+    expect(items[0].estimatedGrams).toBeNull();
+  });
+
+  it('nulls out an implausibly large estimate (hallucination guard)', () => {
+    const items = parseAnthropicToolResult(
+      { items: [{ name: 'Rice', matchedProductName: null, estimatedGrams: 50000 }] },
+      []
+    );
+    expect(items[0].estimatedGrams).toBeNull();
+  });
+
+  it('accepts an estimate right at the plausibility ceiling', () => {
+    const items = parseAnthropicToolResult(
+      { items: [{ name: 'Rice', matchedProductName: null, estimatedGrams: 5000 }] },
+      []
+    );
+    expect(items[0].estimatedGrams).toBe(5000);
   });
 });
