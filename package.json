@@ -1,5 +1,5 @@
 {
-  "name": "dia-app",
+  "name": "carbsnap",
   "version": "1.0.0",
   "main": "index.ts",
   "dependencies": {
