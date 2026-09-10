@@ -23,15 +23,29 @@ describe('gramsPerW', () => {
 describe('dishTotals', () => {
   it('sums weight and carbs across items and converts to W', () => {
     const totals = dishTotals([
-      { carbsPer100g: 50, grams: 100 },
-      { carbsPer100g: 20, grams: 50 },
+      { carbsPer100g: 50, grams: 100, isEstimated: false },
+      { carbsPer100g: 20, grams: 50, isEstimated: false },
     ]);
     expect(totals.totalWeight).toBe(150);
     expect(totals.totalCarbs).toBe(60);
     expect(totals.totalW).toBe(6);
+    expect(totals.hasEstimatedItems).toBe(false);
   });
 
-  it('returns zeros for an empty item list', () => {
-    expect(dishTotals([])).toEqual({ totalWeight: 0, totalCarbs: 0, totalW: 0 });
+  it('returns zeros and hasEstimatedItems false for an empty item list', () => {
+    expect(dishTotals([])).toEqual({ totalWeight: 0, totalCarbs: 0, totalW: 0, hasEstimatedItems: false });
+  });
+
+  it('flags hasEstimatedItems true when any item is estimated', () => {
+    const totals = dishTotals([
+      { carbsPer100g: 50, grams: 100, isEstimated: false },
+      { carbsPer100g: 20, grams: 50, isEstimated: true },
+    ]);
+    expect(totals.hasEstimatedItems).toBe(true);
+  });
+
+  it('flags hasEstimatedItems false when no item is estimated', () => {
+    const totals = dishTotals([{ carbsPer100g: 50, grams: 100, isEstimated: false }]);
+    expect(totals.hasEstimatedItems).toBe(false);
   });
 });

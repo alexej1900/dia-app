@@ -12,16 +12,19 @@ export function gramsPerW(carbsPer100g: number): number | null {
 export interface DishItemForCalc {
   carbsPer100g: number;
   grams: number;
+  isEstimated: boolean;
 }
 
 export interface DishTotals {
   totalWeight: number;
   totalCarbs: number;
   totalW: number;
+  hasEstimatedItems: boolean;
 }
 
 export function dishTotals(items: DishItemForCalc[]): DishTotals {
   const totalWeight = items.reduce((sum, i) => sum + i.grams, 0);
   const totalCarbs = items.reduce((sum, i) => sum + (i.carbsPer100g * i.grams) / 100, 0);
-  return { totalWeight, totalCarbs, totalW: carbsToW(totalCarbs) };
+  const hasEstimatedItems = items.some((i) => i.isEstimated);
+  return { totalWeight, totalCarbs, totalW: carbsToW(totalCarbs), hasEstimatedItems };
 }
