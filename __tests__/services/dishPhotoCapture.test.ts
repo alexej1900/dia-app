@@ -38,17 +38,19 @@ jest.mock('../../src/services/dishRecognition', () => {
 });
 
 import * as ImagePicker from 'expo-image-picker';
-import { ImageManipulator } from 'expo-image-manipulator';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { openDatabase } from '../../src/db/database';
 import { listProducts } from '../../src/repositories/productsRepo';
 import { recognizeDish, DishRecognitionError } from '../../src/services/dishRecognition';
 
 describe('captureAndRecognizeDishPhoto', () => {
+  let saveAsyncMock: jest.Mock;
+
   beforeEach(() => {
     jest.clearAllMocks();
 
-    const saveAsync = jest.fn().mockResolvedValue({ base64: 'abc123' });
-    const renderAsync = jest.fn().mockResolvedValue({ saveAsync });
+    saveAsyncMock = jest.fn().mockResolvedValue({ base64: 'abc123' });
+    const renderAsync = jest.fn().mockResolvedValue({ saveAsync: saveAsyncMock });
     const resize = jest.fn().mockReturnValue({ renderAsync });
     (ImageManipulator.manipulate as jest.Mock).mockReturnValue({ resize });
 
@@ -158,5 +160,6 @@ describe('captureAndRecognizeDishPhoto', () => {
     await captureAndRecognizeDishPhoto('camera');
 
     expect(recognizeDish).toHaveBeenCalledWith('abc123', ['Rice', 'Beans']);
+    expect(saveAsyncMock).toHaveBeenCalledWith({ format: SaveFormat.JPEG, compress: 0.7, base64: true });
   });
 });

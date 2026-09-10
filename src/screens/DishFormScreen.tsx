@@ -22,6 +22,7 @@ import type { RecognizedItem } from '../services/dishRecognition';
 import type { DishesStackParamList } from '../navigation/RootNavigator';
 import { buildIngredientRow, applyGramsEdit, IngredientRow } from './dishFormHelpers';
 import { captureAndRecognizeDishPhoto, PhotoPickCancelledError } from '../services/dishPhotoCapture';
+import { ESTIMATED_ITEMS_WARNING, ESTIMATE_WARNING_COLOR } from '../constants/estimateWarning';
 
 type Nav = NativeStackNavigationProp<DishesStackParamList, 'DishForm'>;
 type Route = RouteProp<DishesStackParamList, 'DishForm'>;
@@ -58,8 +59,8 @@ export default function DishFormScreen() {
     setAutoCaptureError(null);
     setAutoCaptureLoading(true);
     try {
-      const items = await captureAndRecognizeDishPhoto(source);
-      handleRecognized(items);
+      const recognizedItems = await captureAndRecognizeDishPhoto(source);
+      handleRecognized(recognizedItems);
     } catch (e) {
       if (!(e instanceof PhotoPickCancelledError)) {
         setAutoCaptureError(
@@ -246,7 +247,7 @@ export default function DishFormScreen() {
         <Text style={styles.totals}>
           Total: {totals.totalWeight} g · {totals.totalCarbs.toFixed(1)} g carbs · {totals.totalW.toFixed(1)} W
         </Text>
-        {totals.hasEstimatedItems && <Text style={styles.estimatedWarning}>⚠ includes unverified estimates</Text>}
+        {totals.hasEstimatedItems && <Text style={styles.estimatedWarning}>{ESTIMATED_ITEMS_WARNING}</Text>}
 
         {error && <Text style={styles.error}>{error}</Text>}
 
@@ -279,7 +280,7 @@ const styles = StyleSheet.create({
   matchRow: { padding: 8, borderBottomWidth: 1, borderBottomColor: '#eee' },
   totals: { marginTop: 16, fontWeight: '600' },
   autoCaptureLoading: { marginBottom: 12 },
-  estimatedWarning: { color: '#b26a00', marginTop: 4, fontSize: 13 },
+  estimatedWarning: { color: ESTIMATE_WARNING_COLOR, marginTop: 4, fontSize: 13 },
   error: { color: '#c62828', marginTop: 12 },
   saveButton: { marginTop: 20, backgroundColor: '#2e7d32', borderRadius: 8, padding: 12, alignItems: 'center' },
   saveButtonText: { color: '#fff', fontWeight: '600' },

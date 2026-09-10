@@ -27,6 +27,12 @@ export async function captureAndRecognizeDishPhoto(source: 'camera' | 'gallery')
 
   // Cap the longest edge at ~1024px, scaling the other dimension proportionally,
   // regardless of orientation.
+  //
+  // This must be a ternary that yields exactly one key (`{ width }` OR `{ height }`),
+  // not an object literal passing both with one set to `null`: expo-image-manipulator's
+  // web implementation checks `!== undefined` to decide whether a dimension was
+  // requested, so an explicit `null` is treated as a real (zero) value instead of
+  // "auto" and crashes canvas rendering.
   const resizeOptions = asset.width >= asset.height ? { width: 1024 } : { height: 1024 };
   const rendered = await ImageManipulator.manipulate(asset.uri).resize(resizeOptions).renderAsync();
   const saved = await rendered.saveAsync({ format: SaveFormat.JPEG, compress: 0.7, base64: true });
