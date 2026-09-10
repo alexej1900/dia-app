@@ -34,7 +34,7 @@ What this module actually delivers, in scope order:
 
 ### Error boundary
 
-A new `src/ErrorBoundary.tsx`: a class component (the only way to catch render errors in React) implementing `getDerivedStateFromError`/`componentDidCatch`, rendering a plain fallback view on error — a short message ("Something went wrong. Please restart the app.") — instead of a blank screen. `App.tsx` wraps `RootNavigator` with it:
+A new `src/ErrorBoundary.tsx`: a class component (the only way to catch render errors in React) implementing `getDerivedStateFromError`/`componentDidCatch`, rendering a plain fallback view on error — a short message ("Something went wrong. Please restart the app.") — instead of a blank screen. `getDerivedStateFromError` is written as the sole piece of decision logic (error in, new state out) so it stays unit-testable with plain Jest despite this codebase having no React Native rendering test environment (see Testing & verification below). `App.tsx` wraps `RootNavigator` with it:
 
 ```tsx
 export default function App() {
@@ -126,7 +126,7 @@ The error boundary (Part A) is the only new error-handling surface this module i
 
 ## Testing & verification
 
-- **Unit tests:** the `ErrorBoundary` component is tested with React Testing Library-style rendering of a component that throws, asserting the fallback text renders instead of propagating the error — the one piece of this module that is actual runtime code.
+- **Unit tests:** this codebase has no React Native rendering test environment (`testEnvironment: "node"`, no `jest-expo`/`@testing-library/react-native`/`react-test-renderer` — consistent with the established pattern from prior modules of putting testable logic in pure files rather than testing screen/component rendering directly). Adding that infrastructure is out of scope for this module. Instead, `ErrorBoundary.getDerivedStateFromError` — a static method, pure input-to-state-output — is unit-tested directly with plain Jest (call it with an `Error`, assert the returned state), without rendering anything. The `render()` method itself (choosing fallback vs. `children`) is simple enough to verify by inline reading and via the manual/`expo start --web` spot-check below, matching how every other screen component in this codebase is verified.
 - **Everything else in this module (`app.json`, `eas.json`, docs) has no automated test surface** — verified by `npx tsc --noEmit` staying clean (confirms `app.json`/`eas.json` are at minimum syntactically compatible with what Expo's config loader expects) and by manual review of the generated docs for accuracy against the actual codebase (correct env var names, correct existing file paths, etc.).
 - **What can't be verified in this environment, carried forward from every prior module:** no Android SDK/emulator means the actual `eas build` output, the signing flow, and the real Play Console submission are never exercised here — the user runs and verifies those themselves, using the docs this module produces as the guide.
 
