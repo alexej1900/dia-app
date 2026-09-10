@@ -17,8 +17,8 @@ describe('dishesRepo', () => {
     const dish = await createDish(db, {
       name: 'Toast with cheese',
       items: [
-        { productId: bread.id, grams: 100 },
-        { productId: cheese.id, grams: 50 },
+        { productId: bread.id, grams: 100, isEstimated: false },
+        { productId: cheese.id, grams: 50, isEstimated: false },
       ],
     });
 
@@ -26,6 +26,7 @@ describe('dishesRepo', () => {
     expect(dish.totals.totalWeight).toBe(150);
     expect(dish.totals.totalCarbs).toBe(51);
     expect(dish.totals.totalW).toBe(5.1);
+    expect(dish.totals.hasEstimatedItems).toBe(false);
   });
 
   it('rejects creating a dish with no ingredients', async () => {
@@ -36,14 +37,17 @@ describe('dishesRepo', () => {
 
   it('updates a dish, replacing its ingredient list', async () => {
     const rice = await createProduct(db, { name: 'Rice', carbsPer100g: 28 });
-    const dish = await createDish(db, { name: 'Rice bowl', items: [{ productId: rice.id, grams: 200 }] });
+    const dish = await createDish(db, {
+      name: 'Rice bowl',
+      items: [{ productId: rice.id, grams: 200, isEstimated: false }],
+    });
 
     const beans = await createProduct(db, { name: 'Beans', carbsPer100g: 20 });
     await updateDish(db, dish.id, {
       name: 'Rice and beans',
       items: [
-        { productId: rice.id, grams: 150 },
-        { productId: beans.id, grams: 100 },
+        { productId: rice.id, grams: 150, isEstimated: false },
+        { productId: beans.id, grams: 100, isEstimated: false },
       ],
     });
 
@@ -55,7 +59,10 @@ describe('dishesRepo', () => {
 
   it('deletes a dish and its ingredient rows', async () => {
     const rice = await createProduct(db, { name: 'Rice', carbsPer100g: 28 });
-    const dish = await createDish(db, { name: 'Rice bowl', items: [{ productId: rice.id, grams: 200 }] });
+    const dish = await createDish(db, {
+      name: 'Rice bowl',
+      items: [{ productId: rice.id, grams: 200, isEstimated: false }],
+    });
 
     await deleteDish(db, dish.id);
 
@@ -66,8 +73,8 @@ describe('dishesRepo', () => {
 
   it('lists dishes filtered by search term, with totals', async () => {
     const rice = await createProduct(db, { name: 'Rice', carbsPer100g: 28 });
-    await createDish(db, { name: 'Rice bowl', items: [{ productId: rice.id, grams: 100 }] });
-    await createDish(db, { name: 'Salad', items: [{ productId: rice.id, grams: 50 }] });
+    await createDish(db, { name: 'Rice bowl', items: [{ productId: rice.id, grams: 100, isEstimated: false }] });
+    await createDish(db, { name: 'Salad', items: [{ productId: rice.id, grams: 50, isEstimated: false }] });
 
     const results = await listDishes(db, 'rice');
     expect(results).toHaveLength(1);
@@ -75,6 +82,7 @@ describe('dishesRepo', () => {
     expect(results[0].totalWeight).toBe(100);
     expect(results[0].totalCarbs).toBe(28);
     expect(results[0].totalW).toBe(2.8);
+    expect(results[0].hasEstimatedItems).toBe(false);
   });
 
   it('rolls back on duplicate productId in items', async () => {
@@ -86,13 +94,46 @@ describe('dishesRepo', () => {
       createDish(db, {
         name: 'Broken dish',
         items: [
-          { productId: rice.id, grams: 100 },
-          { productId: rice.id, grams: 50 },
+          { productId: rice.id, grams: 100, isEstimated: false },
+          { productId: rice.id, grams: 50, isEstimated: false },
         ],
       })
     ).rejects.toThrow();
 
     const dishesAfter = await db.getAllAsync('SELECT * FROM dishes');
     expect(dishesAfter).toHaveLength(0);
+  });
+
+  it('persists and round-trips the isEstimated flag per ingredient', async () => {
+    const rice = await createProduct(db, { name: 'Rice', carbsPer100g: 28 });
+    const beans = await createProduct(db, { name: 'Beans', carbsPer100g: 20 });
+
+    const dish = await createDish(db, {
+      name: 'Mixed bowl',
+      items: [
+        { productId: rice.id, grams: 100, isEstimated: true },
+        { productId: beans.id, grams: 50, isEstimated: false },
+      ],
+    });
+
+    const riceItem = dish.items.find((item) => item.productId === rice.id);
+    const beansItem = dish.items.find((item) => item.productId === beans.id);
+    expect(riceItem?.isEstimated).toBe(true);
+    expect(beansItem?.isEstimated).toBe(false);
+    expect(dish.totals.hasEstimatedItems).toBe(true);
+
+    const reloaded = await getDish(db, dish.id);
+    expect(reloaded?.items.find((item) => item.productId === rice.id)?.isEstimated).toBe(true);
+  });
+
+  it('lists a dish summary flagged when it has any estimated ingredient', async () => {
+    const rice = await createProduct(db, { name: 'Rice', carbsPer100g: 28 });
+    await createDish(db, {
+      name: 'Estimated bowl',
+      items: [{ productId: rice.id, grams: 100, isEstimated: true }],
+    });
+
+    const results = await listDishes(db, 'Estimated bowl');
+    expect(results[0].hasEstimatedItems).toBe(true);
   });
 });

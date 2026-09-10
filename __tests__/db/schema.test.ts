@@ -1,4 +1,5 @@
 import { createTestDatabase } from '../../src/testUtils/createTestDatabase';
+import { migrateSchema } from '../../src/db/schema';
 
 describe('database schema', () => {
   it('creates products, dishes, and dish_items tables', async () => {
@@ -47,5 +48,37 @@ describe('database schema', () => {
       'SELECT id FROM products'
     );
     expect(after).toHaveLength(0);
+  });
+
+  it('has the is_estimated column on dish_items after a fresh create', async () => {
+    const db = await createTestDatabase();
+    const columns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(dish_items)');
+    expect(columns.map((c) => c.name)).toContain('is_estimated');
+  });
+
+  it('migrateSchema adds is_estimated to a pre-existing dish_items table that lacks it', async () => {
+    const db = await createTestDatabase();
+    // Simulate a database created before is_estimated existed.
+    await db.execAsync('DROP TABLE dish_items');
+    await db.execAsync(`
+      CREATE TABLE dish_items (
+        dish_id TEXT NOT NULL REFERENCES dishes(id) ON DELETE CASCADE,
+        product_id TEXT NOT NULL REFERENCES products(id) ON DELETE RESTRICT,
+        grams REAL NOT NULL CHECK (grams > 0),
+        PRIMARY KEY (dish_id, product_id)
+      );
+    `);
+    const before = await db.getAllAsync<{ name: string }>('PRAGMA table_info(dish_items)');
+    expect(before.map((c) => c.name)).not.toContain('is_estimated');
+
+    await migrateSchema(db);
+
+    const after = await db.getAllAsync<{ name: string }>('PRAGMA table_info(dish_items)');
+    expect(after.map((c) => c.name)).toContain('is_estimated');
+  });
+
+  it('migrateSchema is a no-op that does not throw when is_estimated already exists', async () => {
+    const db = await createTestDatabase();
+    await expect(migrateSchema(db)).resolves.not.toThrow();
   });
 });

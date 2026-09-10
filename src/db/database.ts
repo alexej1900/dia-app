@@ -1,5 +1,5 @@
 import * as SQLite from 'expo-sqlite';
-import { SCHEMA_SQL } from './schema';
+import { SCHEMA_SQL, migrateSchema } from './schema';
 import { SqlExecutor } from './sqlExecutor';
 import { seedIfEmpty } from './seed';
 
@@ -10,6 +10,7 @@ export function openDatabase(): Promise<SqlExecutor> {
     dbPromise = (async () => {
       const db = await SQLite.openDatabaseAsync('diaapp.db');
       await db.execAsync(SCHEMA_SQL);
+      await migrateSchema(db as SqlExecutor);
       await seedIfEmpty(db as SqlExecutor);
       return db as SqlExecutor;
     })();

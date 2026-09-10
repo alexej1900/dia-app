@@ -5,6 +5,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { openDatabase } from '../db/database';
 import { listDishes, DishSummary } from '../repositories/dishesRepo';
 import type { DishesStackParamList } from '../navigation/RootNavigator';
+import { ESTIMATED_ITEMS_WARNING, ESTIMATE_WARNING_COLOR } from '../constants/estimateWarning';
 
 type Nav = NativeStackNavigationProp<DishesStackParamList, 'DishesList'>;
 
@@ -44,11 +45,18 @@ export default function DishesListScreen() {
             <Text style={styles.detail}>
               {item.totalWeight} g · {item.totalCarbs.toFixed(1)} g carbs · {item.totalW.toFixed(1)} W
             </Text>
+            {item.hasEstimatedItems && <Text style={styles.estimatedFlag}>{ESTIMATED_ITEMS_WARNING}</Text>}
           </TouchableOpacity>
         )}
       />
       <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate('DishForm', {})}>
         <Text style={styles.addButtonText}>+ Add dish</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.photoButton}
+        onPress={() => navigation.navigate('DishForm', { autoTriggerPhoto: true })}
+      >
+        <Text style={styles.photoButtonText}>📷 Photograph a dish</Text>
       </TouchableOpacity>
     </View>
   );
@@ -62,4 +70,7 @@ const styles = StyleSheet.create({
   detail: { fontSize: 13, color: '#555' },
   addButton: { marginTop: 12, backgroundColor: '#2e7d32', borderRadius: 8, padding: 12, alignItems: 'center' },
   addButtonText: { color: '#fff', fontWeight: '600' },
+  photoButton: { marginTop: 8, backgroundColor: '#2e7d32', borderRadius: 8, padding: 12, alignItems: 'center' },
+  photoButtonText: { color: '#fff', fontWeight: '600' },
+  estimatedFlag: { fontSize: 12, color: ESTIMATE_WARNING_COLOR, marginTop: 2 },
 });

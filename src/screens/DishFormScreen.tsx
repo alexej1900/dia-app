@@ -8,6 +8,8 @@ import {
   Platform,
   KeyboardAvoidingView,
   ScrollView,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -19,6 +21,8 @@ import PhotoRecognitionButton from './PhotoRecognitionButton';
 import type { RecognizedItem } from '../services/dishRecognition';
 import type { DishesStackParamList } from '../navigation/RootNavigator';
 import { buildIngredientRow, applyGramsEdit, IngredientRow } from './dishFormHelpers';
+import { captureAndRecognizeDishPhoto, PhotoPickCancelledError } from '../services/dishPhotoCapture';
+import { ESTIMATED_ITEMS_WARNING, ESTIMATE_WARNING_COLOR } from '../constants/estimateWarning';
 
 type Nav = NativeStackNavigationProp<DishesStackParamList, 'DishForm'>;
 type Route = RouteProp<DishesStackParamList, 'DishForm'>;
@@ -48,6 +52,37 @@ export default function DishFormScreen() {
     });
   };
 
+  const [autoCaptureLoading, setAutoCaptureLoading] = useState(false);
+  const [autoCaptureError, setAutoCaptureError] = useState<string | null>(null);
+
+  const runAutoCapture = async (source: 'camera' | 'gallery') => {
+    setAutoCaptureError(null);
+    setAutoCaptureLoading(true);
+    try {
+      const recognizedItems = await captureAndRecognizeDishPhoto(source);
+      handleRecognized(recognizedItems);
+    } catch (e) {
+      if (!(e instanceof PhotoPickCancelledError)) {
+        setAutoCaptureError(
+          e instanceof Error ? e.message : 'Recognition failed. Try again or add ingredients manually.'
+        );
+      }
+    } finally {
+      setAutoCaptureLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!route.params?.autoTriggerPhoto) return;
+    Alert.alert('Photograph a dish', undefined, [
+      { text: 'Take Photo', onPress: () => runAutoCapture('camera') },
+      { text: 'Choose from Gallery', onPress: () => runAutoCapture('gallery') },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+    // Only ever auto-fire once, on this screen instance's initial mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (pendingUnmatchedNames.length === 0) return;
     const next = pendingUnmatchedNames[0];
@@ -73,7 +108,7 @@ export default function DishFormScreen() {
             productName: item.productName,
             carbsPer100g: item.carbsPer100g,
             gramsText: String(item.grams),
-            isEstimated: false,
+            isEstimated: item.isEstimated,
           }))
         );
       }
@@ -115,7 +150,7 @@ export default function DishFormScreen() {
   const totals = dishTotals(
     parsedItems
       .filter((item) => !Number.isNaN(item.grams) && item.grams > 0)
-      .map((item) => ({ carbsPer100g: item.carbsPer100g, grams: item.grams }))
+      .map((item) => ({ carbsPer100g: item.carbsPer100g, grams: item.grams, isEstimated: item.isEstimated }))
   );
 
   const handleSave = async () => {
@@ -138,7 +173,11 @@ export default function DishFormScreen() {
       const db = await openDatabase();
       const input = {
         name: name.trim(),
-        items: parsedItems.map((item) => ({ productId: item.productId, grams: item.grams })),
+        items: parsedItems.map((item) => ({
+          productId: item.productId,
+          grams: item.grams,
+          isEstimated: item.isEstimated,
+        })),
       };
       if (dishId) {
         await updateDish(db, dishId, input);
@@ -164,6 +203,9 @@ export default function DishFormScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView contentContainerStyle={styles.container}>
+        {autoCaptureLoading && <ActivityIndicator style={styles.autoCaptureLoading} />}
+        {autoCaptureError && <Text style={styles.error}>{autoCaptureError}</Text>}
+
         <Text style={styles.label}>Name</Text>
         <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="e.g. Rice bowl" />
 
@@ -205,6 +247,7 @@ export default function DishFormScreen() {
         <Text style={styles.totals}>
           Total: {totals.totalWeight} g · {totals.totalCarbs.toFixed(1)} g carbs · {totals.totalW.toFixed(1)} W
         </Text>
+        {totals.hasEstimatedItems && <Text style={styles.estimatedWarning}>{ESTIMATED_ITEMS_WARNING}</Text>}
 
         {error && <Text style={styles.error}>{error}</Text>}
 
@@ -236,6 +279,8 @@ const styles = StyleSheet.create({
   matchList: { borderWidth: 1, borderColor: '#eee', marginTop: 4 },
   matchRow: { padding: 8, borderBottomWidth: 1, borderBottomColor: '#eee' },
   totals: { marginTop: 16, fontWeight: '600' },
+  autoCaptureLoading: { marginBottom: 12 },
+  estimatedWarning: { color: ESTIMATE_WARNING_COLOR, marginTop: 4, fontSize: 13 },
   error: { color: '#c62828', marginTop: 12 },
   saveButton: { marginTop: 20, backgroundColor: '#2e7d32', borderRadius: 8, padding: 12, alignItems: 'center' },
   saveButtonText: { color: '#fff', fontWeight: '600' },

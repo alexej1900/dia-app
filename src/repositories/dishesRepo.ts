@@ -5,6 +5,7 @@ import { dishTotals, carbsToW, DishTotals } from '../calculations/carbs';
 export interface DishItemInput {
   productId: string;
   grams: number;
+  isEstimated: boolean;
 }
 
 export interface DishInput {
@@ -17,6 +18,7 @@ export interface DishItem {
   productName: string;
   carbsPer100g: number;
   grams: number;
+  isEstimated: boolean;
 }
 
 export interface Dish {
@@ -34,6 +36,7 @@ export interface DishSummary {
   totalWeight: number;
   totalCarbs: number;
   totalW: number;
+  hasEstimatedItems: boolean;
 }
 
 interface DishRow {
@@ -48,12 +51,14 @@ interface DishItemRow {
   name: string;
   carbs_per_100g: number;
   grams: number;
+  is_estimated: number;
 }
 
 async function loadItems(db: SqlExecutor, dishId: string): Promise<DishItem[]> {
   const rows = await db.getAllAsync<DishItemRow>(
     `SELECT dish_items.product_id AS product_id, products.name AS name,
-            products.carbs_per_100g AS carbs_per_100g, dish_items.grams AS grams
+            products.carbs_per_100g AS carbs_per_100g, dish_items.grams AS grams,
+            dish_items.is_estimated AS is_estimated
      FROM dish_items
      JOIN products ON products.id = dish_items.product_id
      WHERE dish_items.dish_id = ?
@@ -65,16 +70,18 @@ async function loadItems(db: SqlExecutor, dishId: string): Promise<DishItem[]> {
     productName: row.name,
     carbsPer100g: row.carbs_per_100g,
     grams: row.grams,
+    isEstimated: row.is_estimated === 1,
   }));
 }
 
 async function replaceItemsRaw(db: SqlExecutor, dishId: string, items: DishItemInput[]): Promise<void> {
   await db.runAsync('DELETE FROM dish_items WHERE dish_id = ?', [dishId]);
   for (const item of items) {
-    await db.runAsync('INSERT INTO dish_items (dish_id, product_id, grams) VALUES (?, ?, ?)', [
+    await db.runAsync('INSERT INTO dish_items (dish_id, product_id, grams, is_estimated) VALUES (?, ?, ?, ?)', [
       dishId,
       item.productId,
       item.grams,
+      item.isEstimated ? 1 : 0,
     ]);
   }
 }
@@ -149,6 +156,7 @@ export async function listDishes(db: SqlExecutor, searchTerm = ''): Promise<Dish
       totalWeight: totals.totalWeight,
       totalCarbs: totals.totalCarbs,
       totalW: totals.totalW,
+      hasEstimatedItems: totals.hasEstimatedItems,
     });
   }
 
