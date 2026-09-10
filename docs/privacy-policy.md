@@ -14,8 +14,13 @@ it to Anthropic's Claude API to identify ingredients and estimate portion sizes.
 photo is used only to generate that one recognition result and is not stored by the
 app developer beyond what's needed to process the request.
 
-**Everything else stays on your device.** Your product database, dish records, carb
-values, and any notes about which ingredient weights were AI-estimated vs. manually
+**Your product names are also sent with the photo.** Alongside the dish photo, the app
+sends the names of the products in your own product database to the same server, so the
+recognition result can be matched against your own catalog. No other product data (such
+as carb values) is included.
+
+**Everything else stays on your device.** Your carb values, ingredient weights, dish
+records, and any notes about which ingredient weights were AI-estimated vs. manually
 verified are stored locally on your device only, using an on-device database. None of
 this is transmitted anywhere, backed up to any server, or accessible to the app
 developer.
@@ -36,9 +41,13 @@ other purpose.
 
 ## Third-party services
 
-Dish photos are processed by [Anthropic](https://www.anthropic.com/legal/privacy)'s
-Claude API, via the app developer's own server. No other third-party service receives
-any data from the app.
+Dish photos (and your product names, as described above) are processed by
+[Anthropic](https://www.anthropic.com/legal/privacy)'s Claude API, via the app
+developer's own server. Separately, if you use the optional "look up carbs" feature on
+the product form, the product name you're searching for is sent to
+[Open Food Facts](https://world.openfoodfacts.org), a free/open product database, to
+retrieve its carb value — this only happens when you explicitly tap that button, not
+automatically. No other third-party service receives any data from the app.
 
 ## Data retention and deletion
 

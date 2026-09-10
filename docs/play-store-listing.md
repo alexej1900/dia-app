@@ -13,7 +13,7 @@ CarbSnap
 
 Photograph a meal, get an AI carb estimate to help plan your insulin dose.
 
-_(79 characters)_
+_(74 characters)_
 
 ## Full description (max 4000 characters)
 
@@ -29,9 +29,9 @@ Key features:
 - Build your own local database of products and dishes with known carb values
 - Every dish shows a clear warning when its total includes an unverified AI estimate,
   so you always know whether a number is a guess or something you've confirmed yourself
-- All of your product, dish, and carb data stays on your device — nothing is uploaded
-  or shared, except the dish photo itself, which is sent only to power the recognition
-  feature
+- All of your dish and carb data stays on your device — nothing is uploaded or shared,
+  except the dish photo itself and your product names, which are sent only to power the
+  recognition feature
 
 What CarbSnap does NOT do:
 - CarbSnap does not calculate an insulin dose. It estimates carbohydrate content only.
@@ -40,8 +40,8 @@ What CarbSnap does NOT do:
   treatment. Always consult your doctor or diabetes care team about your insulin
   regimen.
 
-CarbSnap works fully offline for everything except the photo-recognition step, which
-needs an internet connection to reach the recognition service.
+CarbSnap works fully offline for everything except the photo-recognition step and the
+optional Open Food Facts carb lookup, both of which need an internet connection.
 
 ## Suggested category
 
@@ -67,5 +67,7 @@ for the related EAS setup step).
 Both are filled in directly inside Play Console (they're interactive questionnaires,
 not free text) — not something to draft here. Use the "What the app collects" section
 of `docs/privacy-policy.md` as the source of truth when answering Play Console's Data
-Safety form: the only data point leaving the device is the dish photo sent for
-recognition; everything else is local-only.
+Safety form: the data points leaving the device are the dish photo and your product
+names (sent together for recognition), and — only when you tap the optional "look up
+carbs" button — the product name you're searching for, sent to Open Food Facts;
+everything else is local-only.

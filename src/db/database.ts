@@ -8,7 +8,7 @@ let dbPromise: Promise<SqlExecutor> | null = null;
 export function openDatabase(): Promise<SqlExecutor> {
   if (!dbPromise) {
     dbPromise = (async () => {
-      const db = await SQLite.openDatabaseAsync('diaapp.db');
+      const db = await SQLite.openDatabaseAsync('carbsnap.db');
       await db.execAsync(SCHEMA_SQL);
       await migrateSchema(db as SqlExecutor);
       await seedIfEmpty(db as SqlExecutor);

@@ -81,7 +81,10 @@ Two build profiles — no `development` profile, since there's no device/emulato
 }
 ```
 
-- `preview` produces a directly-installable `.apk`, meant for Play Console's **internal testing track** and ad hoc sideload testing.
+- `preview` produces a directly-installable `.apk`, meant for ad hoc sideload and manual
+  QA testing — **not** for upload to Play Console (Google Play has required Android App
+  Bundles, not APKs, for all release tracks — including internal testing — since August
+  2021); only `production`'s `.aab` is ever submitted to Play.
 - `production` produces a Play-Store-required `.aab` and auto-increments `versionCode` on every build via `appVersionSource: "remote"` (EAS tracks the counter itself), so the user never hand-edits `app.json`'s version code before a release build.
 - `submit.production` is an empty object deliberately — `eas submit` will prompt interactively for Play Console service-account credentials the first time the user runs it; no credentials are or can be supplied by this module.
 

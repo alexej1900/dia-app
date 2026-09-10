@@ -52,3 +52,19 @@ This repo has no `extra.eas.projectId` in `app.json` yet — that gets written
 automatically the first time you run `eas init` (or your first `eas build`) from your
 own Expo account. Signing uses an EAS-managed keystore by default; you'll be walked
 through creating it interactively on your first production build.
+
+## A note on versionCode
+
+`eas.json`'s `appVersionSource` is `"remote"`, so EAS ignores `app.json`'s local
+`android.versionCode` value except as the *initial seed* for its own remote counter —
+so the first production build will actually be versionCode 2, not 1 (the local `1`
+seeds the counter, then `autoIncrement` bumps it before that first build completes).
+This is expected and not a bug.
+
+## Google Play submission prerequisite
+
+Separately from the EAS environment variables documented above, `eas submit` (for
+uploading a build to Google Play) requires a Google Play **Service Account JSON key**,
+created in Google Cloud Console and linked to the Play Console project. Setting that up
+is outside the scope of this repo/session — see Expo's own
+[`eas submit`](https://docs.expo.dev/submit/android/) documentation for the steps.
