@@ -31,7 +31,7 @@ export type PhotoReviewParams = {
 
 export type DishesStackParamList = {
   DishesList: undefined;
-  DishForm: { dishId?: string };
+  DishForm: { dishId?: string; autoTriggerPhoto?: boolean };
   PhotoReview: PhotoReviewParams;
   ProductForm: ProductFormParams;
 };
