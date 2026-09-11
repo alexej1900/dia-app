@@ -18,7 +18,7 @@ import { listProducts, Product } from '../repositories/productsRepo';
 import { createDish, updateDish, deleteDish, getDish } from '../repositories/dishesRepo';
 import { dishTotals } from '../calculations/carbs';
 import PhotoRecognitionButton from './PhotoRecognitionButton';
-import type { RecognizedItem } from '../services/dishRecognition';
+import type { RecognitionResult } from '../services/dishRecognition';
 import type { DishesStackParamList } from '../navigation/RootNavigator';
 import { buildIngredientRow, applyGramsEdit, IngredientRow } from './dishFormHelpers';
 import { captureAndRecognizeDishPhoto, PhotoPickCancelledError } from '../services/dishPhotoCapture';
@@ -37,17 +37,21 @@ export default function DishFormScreen() {
   const [productSearch, setProductSearch] = useState('');
   const [matches, setMatches] = useState<Product[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [nameSuggestions, setNameSuggestions] = useState<string[]>([]);
 
   const [pendingUnmatchedNames, setPendingUnmatchedNames] = useState<
     { name: string; estimatedGrams: number | null }[]
   >([]);
 
-  const handleRecognized = (recognizedItems: RecognizedItem[]) => {
+  const handleRecognized = (result: RecognitionResult) => {
+    setNameSuggestions(result.dishNameSuggestions);
     navigation.navigate('PhotoReview', {
-      items: recognizedItems,
-      onConfirm: (result) => {
-        result.matchedProducts.forEach(({ product, estimatedGrams }) => addIngredient(product, estimatedGrams));
-        setPendingUnmatchedNames(result.unmatchedNames);
+      items: result.items,
+      onConfirm: (confirmResult) => {
+        confirmResult.matchedProducts.forEach(({ product, estimatedGrams }) =>
+          addIngredient(product, estimatedGrams)
+        );
+        setPendingUnmatchedNames(confirmResult.unmatchedNames);
       },
     });
   };
@@ -59,8 +63,8 @@ export default function DishFormScreen() {
     setAutoCaptureError(null);
     setAutoCaptureLoading(true);
     try {
-      const recognizedItems = await captureAndRecognizeDishPhoto(source);
-      handleRecognized(recognizedItems);
+      const result = await captureAndRecognizeDishPhoto(source);
+      handleRecognized(result);
     } catch (e) {
       if (!(e instanceof PhotoPickCancelledError)) {
         setAutoCaptureError(
@@ -216,6 +220,15 @@ export default function DishFormScreen() {
         {autoCaptureError && <Text style={styles.error}>{autoCaptureError}</Text>}
 
         <Text style={styles.label}>Name</Text>
+        {name.trim() === '' && nameSuggestions.length > 0 && (
+          <View style={styles.suggestionRow}>
+            {nameSuggestions.map((suggestion) => (
+              <TouchableOpacity key={suggestion} style={styles.suggestionChip} onPress={() => setName(suggestion)}>
+                <Text style={styles.suggestionChipText}>{suggestion}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
         <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="e.g. Rice bowl" />
 
         <Text style={styles.label}>Ingredients</Text>
@@ -279,6 +292,9 @@ const styles = StyleSheet.create({
   container: { padding: 16 },
   label: { fontSize: 13, color: '#555', marginTop: 12 },
   input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 8, marginTop: 4 },
+  suggestionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 },
+  suggestionChip: { borderWidth: 1, borderColor: '#2e7d32', borderRadius: 16, paddingVertical: 6, paddingHorizontal: 12 },
+  suggestionChipText: { color: '#2e7d32', fontSize: 14, fontWeight: '600' },
   ingredientRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
   ingredientName: { flex: 1 },
   gramsInput: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 8, width: 60, marginRight: 8 },
