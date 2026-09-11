@@ -31,6 +31,12 @@
           "microphonePermission": false
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "f70784a6-1e72-4097-9c3e-54e18b71bf69"
+      }
+    },
+    "owner": "alexej1900"
   }
 }
