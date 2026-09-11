@@ -30,6 +30,12 @@
           "cameraPermission": "Allow $(PRODUCT_NAME) to access your camera to photograph a dish.",
           "microphonePermission": false
         }
+      ],
+      [
+        "expo-navigation-bar",
+        {
+          "style": "dark"
+        }
       ]
     ],
     "extra": {

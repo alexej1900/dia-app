@@ -28,9 +28,38 @@ describe('searchCarbsByName', () => {
     await expect(searchCarbsByName('bread')).rejects.toThrow(OpenFoodFactsError);
   });
 
-  it('throws OpenFoodFactsError when the response is not ok', async () => {
-    global.fetch = jest.fn().mockResolvedValue({ ok: false, status: 500 }) as unknown as typeof fetch;
+  it('throws OpenFoodFactsError when the response is not ok after exhausting retries', async () => {
+    const fetchMock = jest.fn().mockResolvedValue({ ok: false, status: 500 });
+    global.fetch = fetchMock as unknown as typeof fetch;
 
     await expect(searchCarbsByName('bread')).rejects.toThrow(OpenFoodFactsError);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it('retries a transient 5xx response and succeeds once the service recovers', async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 503 })
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          products: [{ product_name: 'Butter', brands: null, nutriments: { carbohydrates_100g: 0.1 } }],
+        }),
+      });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const results = await searchCarbsByName('butter');
+
+    expect(results).toEqual([{ name: 'Butter', brand: null, carbsPer100g: 0.1 }]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not retry a 4xx client error', async () => {
+    const fetchMock = jest.fn().mockResolvedValue({ ok: false, status: 404 });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    await expect(searchCarbsByName('bread')).rejects.toThrow(OpenFoodFactsError);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
