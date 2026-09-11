@@ -89,5 +89,5 @@ const styles = StyleSheet.create({
   checkbox: { fontSize: 20, marginRight: 12 },
   rowText: { fontSize: 16 },
   saveButton: { marginTop: 20, backgroundColor: '#2e7d32', borderRadius: 8, padding: 12, alignItems: 'center' },
-  saveButtonText: { color: '#fff', fontWeight: '600' },
+  saveButtonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
 });

@@ -16,6 +16,35 @@ interface OpenFoodFactsResponse {
   products?: OpenFoodFactsProduct[];
 }
 
+const MAX_ATTEMPTS = 3;
+const RETRY_DELAY_MS = 300;
+
+// Open Food Facts' legacy search endpoint is intermittently flaky under load,
+// returning a 503 that clears up on an immediate retry (observed live: the same
+// query failed twice, then succeeded, within a couple of seconds). Retry
+// transient failures (network errors and 5xx) a couple of times; a 4xx means
+// the request itself is wrong, so retrying it would never help.
+async function fetchWithRetry(url: string): Promise<Response> {
+  let lastNetworkError: unknown;
+  let lastResponse: Response | undefined;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    try {
+      const response = await fetch(url);
+      if (response.ok || response.status < 500) {
+        return response;
+      }
+      lastResponse = response;
+    } catch (e) {
+      lastNetworkError = e;
+    }
+    if (attempt < MAX_ATTEMPTS) {
+      await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+    }
+  }
+  if (lastResponse) return lastResponse;
+  throw lastNetworkError;
+}
+
 export async function searchCarbsByName(name: string): Promise<OpenFoodFactsMatch[]> {
   const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(
     name
@@ -23,7 +52,7 @@ export async function searchCarbsByName(name: string): Promise<OpenFoodFactsMatc
 
   let response: Response;
   try {
-    response = await fetch(url);
+    response = await fetchWithRetry(url);
   } catch {
     throw new OpenFoodFactsError('Could not reach Open Food Facts. Check your internet connection.');
   }
