@@ -190,11 +190,20 @@ export default function DishFormScreen() {
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (!dishId) return;
-    const db = await openDatabase();
-    await deleteDish(db, dishId);
-    navigation.goBack();
+    Alert.alert('Delete dish', 'Are you sure you want to delete this dish? This cannot be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          const db = await openDatabase();
+          await deleteDish(db, dishId);
+          navigation.goBack();
+        },
+      },
+    ]);
   };
 
   return (
