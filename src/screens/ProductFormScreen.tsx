@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
   ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { openDatabase } from '../db/database';
@@ -165,7 +166,7 @@ export default function ProductFormScreen() {
       </ScrollView>
 
       <Modal visible={lookupVisible} animationType="slide" onRequestClose={() => setLookupVisible(false)}>
-        <View style={styles.container}>
+        <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
           <Text style={styles.label}>Results for &quot;{name}&quot;</Text>
           {lookupLoading && <ActivityIndicator style={{ marginTop: 20 }} />}
           {!lookupLoading && lookupError && <Text style={styles.error}>{lookupError}</Text>}
@@ -187,7 +188,7 @@ export default function ProductFormScreen() {
           <TouchableOpacity style={styles.deleteButton} onPress={() => setLookupVisible(false)}>
             <Text style={styles.deleteButtonText}>Close</Text>
           </TouchableOpacity>
-        </View>
+        </SafeAreaView>
       </Modal>
     </KeyboardAvoidingView>
   );
