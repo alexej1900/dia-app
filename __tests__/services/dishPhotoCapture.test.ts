@@ -56,7 +56,10 @@ describe('captureAndRecognizeDishPhoto', () => {
 
     (openDatabase as jest.Mock).mockResolvedValue({});
     (listProducts as jest.Mock).mockResolvedValue([{ name: 'Rice' }, { name: 'Beans' }]);
-    (recognizeDish as jest.Mock).mockResolvedValue([{ name: 'Rice', matchedProductName: 'Rice', estimatedGrams: 100 }]);
+    (recognizeDish as jest.Mock).mockResolvedValue({
+      items: [{ name: 'Rice', matchedProductName: 'Rice', estimatedGrams: 100 }],
+      dishNameSuggestions: [],
+    });
   });
 
   it('requests camera permission and picks via the camera for source "camera"', async () => {
@@ -66,12 +69,15 @@ describe('captureAndRecognizeDishPhoto', () => {
       assets: [{ uri: 'file://photo.jpg', width: 800, height: 600 }],
     });
 
-    const items = await captureAndRecognizeDishPhoto('camera');
+    const result = await captureAndRecognizeDishPhoto('camera');
 
     expect(ImagePicker.requestCameraPermissionsAsync).toHaveBeenCalled();
     expect(ImagePicker.launchCameraAsync).toHaveBeenCalled();
     expect(ImagePicker.launchImageLibraryAsync).not.toHaveBeenCalled();
-    expect(items).toEqual([{ name: 'Rice', matchedProductName: 'Rice', estimatedGrams: 100 }]);
+    expect(result).toEqual({
+      items: [{ name: 'Rice', matchedProductName: 'Rice', estimatedGrams: 100 }],
+      dishNameSuggestions: [],
+    });
   });
 
   it('requests media library permission and picks via the gallery for source "gallery"', async () => {

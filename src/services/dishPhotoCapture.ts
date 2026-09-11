@@ -2,12 +2,12 @@ import * as ImagePicker from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { openDatabase } from '../db/database';
 import { listProducts } from '../repositories/productsRepo';
-import { recognizeDish, RecognizedItem, DishRecognitionError } from './dishRecognition';
+import { recognizeDish, RecognitionResult, DishRecognitionError } from './dishRecognition';
 
 export class PhotoPermissionDeniedError extends Error {}
 export class PhotoPickCancelledError extends Error {}
 
-export async function captureAndRecognizeDishPhoto(source: 'camera' | 'gallery'): Promise<RecognizedItem[]> {
+export async function captureAndRecognizeDishPhoto(source: 'camera' | 'gallery'): Promise<RecognitionResult> {
   const permission =
     source === 'camera'
       ? await ImagePicker.requestCameraPermissionsAsync()

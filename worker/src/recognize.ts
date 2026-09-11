@@ -4,6 +4,11 @@ export interface RecognizedItem {
   estimatedGrams: number | null;
 }
 
+export interface RecognitionResult {
+  items: RecognizedItem[];
+  dishNameSuggestions: string[];
+}
+
 export interface RecognizeRequestBody {
   image: string;
   productNames: string[];
@@ -81,8 +86,14 @@ function buildToolDefinition() {
             additionalProperties: false,
           },
         },
+        dishNameSuggestions: {
+          type: 'array',
+          items: { type: 'string' },
+          description:
+            '2-3 short, natural suggested names for the dish as a whole (not per-ingredient) that a home cook might use, e.g. "Grilled Chicken with Jollof Rice" or "Chicken and Rice Plate". Empty array if the dish is too generic or ambiguous to name with confidence.',
+        },
       },
-      required: ['items'],
+      required: ['items', 'dishNameSuggestions'],
       additionalProperties: false,
     },
   };
@@ -96,7 +107,7 @@ export function buildAnthropicRequestParams(body: RecognizeRequestBody) {
 
   return {
     model: 'claude-haiku-4-5',
-    max_tokens: 2048,
+    max_tokens: 3072,
     tool_choice: { type: 'tool' as const, name: RECOGNIZE_TOOL_NAME },
     tools: [buildToolDefinition()],
     messages: [
@@ -109,7 +120,7 @@ export function buildAnthropicRequestParams(body: RecognizeRequestBody) {
           },
           {
             type: 'text' as const,
-            text: `Identify every distinct ingredient visible in this dish photo. ${productListText}\n\nFor each ingredient, report its name and, if it matches one of the listed products in meaning (not necessarily exact wording), report that product's exact name as matchedProductName. Otherwise set matchedProductName to null.\n\nAlso estimate that ingredient's visible portion weight in grams, using ordinary visual cues such as plate or bowl size, how full a container looks, and typical serving sizes for that kind of food. No physical reference object is provided in the photo, so use your best judgment. If you genuinely cannot judge it, set estimatedGrams to null.`,
+            text: `Identify every distinct ingredient visible in this dish photo. ${productListText}\n\nFor each ingredient, report its name and, if it matches one of the listed products in meaning (not necessarily exact wording), report that product's exact name as matchedProductName. Otherwise set matchedProductName to null.\n\nAlso estimate that ingredient's visible portion weight in grams, using ordinary visual cues such as plate or bowl size, how full a container looks, and typical serving sizes for that kind of food. No physical reference object is provided in the photo, so use your best judgment. If you genuinely cannot judge it, set estimatedGrams to null.\n\nFinally, suggest 2-3 short, natural names for the dish as a whole (not per-ingredient) that a home cook might use, such as "Grilled Chicken with Jollof Rice" or "Chicken and Rice Plate". If the dish is too generic or ambiguous to name with confidence, return an empty array for dishNameSuggestions.`,
           },
         ],
       },
@@ -117,15 +128,15 @@ export function buildAnthropicRequestParams(body: RecognizeRequestBody) {
   };
 }
 
-export function parseAnthropicToolResult(input: unknown, productNames: string[]): RecognizedItem[] {
+export function parseAnthropicToolResult(input: unknown, productNames: string[]): RecognitionResult {
   if (typeof input !== 'object' || input === null || !('items' in input)) {
     throw new RecognizeRequestError('Unexpected response shape from recognition model', 502);
   }
-  const { items } = input as { items: unknown };
+  const { items, dishNameSuggestions } = input as { items: unknown; dishNameSuggestions?: unknown };
   if (!Array.isArray(items)) {
     throw new RecognizeRequestError('Unexpected response shape from recognition model', 502);
   }
-  return items.map((item) => {
+  const parsedItems = items.map((item) => {
     if (typeof item !== 'object' || item === null || typeof (item as Record<string, unknown>).name !== 'string') {
       throw new RecognizeRequestError('Unexpected item shape from recognition model', 502);
     }
@@ -146,4 +157,10 @@ export function parseAnthropicToolResult(input: unknown, productNames: string[])
       estimatedGrams: resolvedEstimatedGrams,
     };
   });
+
+  const resolvedDishNameSuggestions = Array.isArray(dishNameSuggestions)
+    ? dishNameSuggestions.filter((s): s is string => typeof s === 'string' && s.trim().length > 0).slice(0, 3)
+    : [];
+
+  return { items: parsedItems, dishNameSuggestions: resolvedDishNameSuggestions };
 }

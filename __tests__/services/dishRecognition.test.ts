@@ -23,9 +23,9 @@ describe('recognizeDish', () => {
       json: async () => ({ items: [{ name: 'Rice', matchedProductName: 'Rice' }] }),
     }) as unknown as typeof fetch;
 
-    const items = await recognizeDish('base64data', ['Rice']);
+    const result = await recognizeDish('base64data', ['Rice']);
 
-    expect(items).toEqual([{ name: 'Rice', matchedProductName: 'Rice' }]);
+    expect(result.items).toEqual([{ name: 'Rice', matchedProductName: 'Rice' }]);
     expect(global.fetch).toHaveBeenCalledWith(
       'https://worker.example/recognize',
       expect.objectContaining({
@@ -86,8 +86,59 @@ describe('recognizeDish', () => {
       }),
     }) as unknown as typeof fetch;
 
-    const items = await recognizeDish('base64data', ['Rice']);
+    const result = await recognizeDish('base64data', ['Rice']);
 
-    expect(items).toEqual([{ name: 'Rice', matchedProductName: 'Rice', estimatedGrams: 150 }]);
+    expect(result.items).toEqual([{ name: 'Rice', matchedProductName: 'Rice', estimatedGrams: 150 }]);
+  });
+
+  it('passes through dishNameSuggestions from the response', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        items: [],
+        dishNameSuggestions: ['Grilled Chicken with Jollof Rice', 'Chicken and Rice Plate'],
+      }),
+    }) as unknown as typeof fetch;
+
+    const result = await recognizeDish('base64data', []);
+
+    expect(result.dishNameSuggestions).toEqual(['Grilled Chicken with Jollof Rice', 'Chicken and Rice Plate']);
+  });
+
+  it('defaults dishNameSuggestions to an empty array when the response omits it', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ items: [] }),
+    }) as unknown as typeof fetch;
+
+    const result = await recognizeDish('base64data', []);
+
+    expect(result.dishNameSuggestions).toEqual([]);
+  });
+
+  it('defaults items to an empty array when the response has a non-array value', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ items: 'not an array', dishNameSuggestions: [] }),
+    }) as unknown as typeof fetch;
+
+    const result = await recognizeDish('base64data', []);
+
+    expect(result.items).toEqual([]);
+  });
+
+  it('defaults dishNameSuggestions to an empty array when the response has a non-array value', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ items: [], dishNameSuggestions: 'not an array' }),
+    }) as unknown as typeof fetch;
+
+    const result = await recognizeDish('base64data', []);
+
+    expect(result.dishNameSuggestions).toEqual([]);
   });
 });
