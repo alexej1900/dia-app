@@ -56,7 +56,8 @@ export default {
     let message;
     try {
       message = await client.messages.create(buildAnthropicRequestParams(body));
-    } catch {
+    } catch (e) {
+      console.error('Anthropic call failed:', e instanceof Error ? e.message : e, e instanceof Anthropic.APIError ? { status: e.status, name: e.name } : undefined);
       return jsonResponse({ error: 'Recognition request failed' }, 502);
     }
 
