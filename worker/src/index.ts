@@ -67,8 +67,8 @@ export default {
     }
 
     try {
-      const items = parseAnthropicToolResult(toolUse.input, body.productNames);
-      return jsonResponse({ items }, 200);
+      const result = parseAnthropicToolResult(toolUse.input, body.productNames);
+      return jsonResponse(result, 200);
     } catch (e) {
       const status = e instanceof RecognizeRequestError ? e.status : 502;
       return jsonResponse({ error: e instanceof Error ? e.message : 'Invalid model response' }, status);
