@@ -2,6 +2,7 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import ProductsListScreen from '../screens/ProductsListScreen';
 import ProductFormScreen from '../screens/ProductFormScreen';
 import DishesListScreen from '../screens/DishesListScreen';
@@ -68,8 +69,22 @@ export default function RootNavigator() {
   return (
     <NavigationContainer>
       <Tab.Navigator screenOptions={{ headerShown: false }}>
-        <Tab.Screen name="ProductsTab" component={ProductsStackNavigator} options={{ title: 'Products' }} />
-        <Tab.Screen name="DishesTab" component={DishesStackNavigator} options={{ title: 'Dishes' }} />
+        <Tab.Screen
+          name="ProductsTab"
+          component={ProductsStackNavigator}
+          options={{
+            title: 'Products',
+            tabBarIcon: ({ color, size }) => <Ionicons name="basket-outline" size={size} color={color} />,
+          }}
+        />
+        <Tab.Screen
+          name="DishesTab"
+          component={DishesStackNavigator}
+          options={{
+            title: 'Dishes',
+            tabBarIcon: ({ color, size }) => <Ionicons name="restaurant-outline" size={size} color={color} />,
+          }}
+        />
       </Tab.Navigator>
     </NavigationContainer>
   );
