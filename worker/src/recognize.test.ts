@@ -107,7 +107,7 @@ describe('buildAnthropicRequestParams', () => {
     const params = buildAnthropicRequestParams({ image: 'abc', productNames: [] });
     const content = params.messages[0].content;
     const textBlock = content.find((b) => b.type === 'text');
-    expect(textBlock?.text.toLowerCase()).toContain('name');
+    expect(textBlock?.text).toContain('dish as a whole');
   });
 });
 
