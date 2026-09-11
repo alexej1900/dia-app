@@ -283,7 +283,7 @@ const styles = StyleSheet.create({
   estimatedWarning: { color: ESTIMATE_WARNING_COLOR, marginTop: 4, fontSize: 13 },
   error: { color: '#c62828', marginTop: 12 },
   saveButton: { marginTop: 20, backgroundColor: '#2e7d32', borderRadius: 8, padding: 12, alignItems: 'center' },
-  saveButtonText: { color: '#fff', fontWeight: '600' },
+  saveButtonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
   deleteButton: {
     marginTop: 12,
     borderRadius: 8,
@@ -292,5 +292,5 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#c62828',
   },
-  deleteButtonText: { color: '#c62828', fontWeight: '600' },
+  deleteButtonText: { color: '#c62828', fontWeight: '600', fontSize: 16 },
 });

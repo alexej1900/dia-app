@@ -68,5 +68,5 @@ const styles = StyleSheet.create({
   name: { fontSize: 16, fontWeight: '600' },
   detail: { fontSize: 13, color: '#555' },
   addButton: { marginTop: 12, backgroundColor: '#2e7d32', borderRadius: 8, padding: 12, alignItems: 'center' },
-  addButtonText: { color: '#fff', fontWeight: '600' },
+  addButtonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
 });

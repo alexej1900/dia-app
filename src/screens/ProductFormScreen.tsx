@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
   preview: { marginTop: 6, color: '#2e7d32', fontWeight: '600' },
   error: { color: '#c62828', marginTop: 12 },
   saveButton: { marginTop: 20, backgroundColor: '#2e7d32', borderRadius: 8, padding: 12, alignItems: 'center' },
-  saveButtonText: { color: '#fff', fontWeight: '600' },
+  saveButtonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
   deleteButton: {
     marginTop: 12,
     borderRadius: 8,
@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#c62828',
   },
-  deleteButtonText: { color: '#c62828', fontWeight: '600' },
+  deleteButtonText: { color: '#c62828', fontWeight: '600', fontSize: 16 },
   lookupButton: {
     marginTop: 8,
     borderRadius: 8,
@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#2e7d32',
   },
-  lookupButtonText: { color: '#2e7d32', fontWeight: '600' },
+  lookupButtonText: { color: '#2e7d32', fontWeight: '600', fontSize: 16 },
   matchRow: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#eee' },
   name: { fontSize: 16, fontWeight: '600' },
   detail: { fontSize: 13, color: '#555' },

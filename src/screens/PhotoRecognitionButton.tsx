@@ -46,7 +46,7 @@ const styles = StyleSheet.create({
   container: { marginTop: 12 },
   buttonRow: { flexDirection: 'row', gap: 8 },
   button: { flex: 1, borderWidth: 1, borderColor: '#2e7d32', borderRadius: 8, padding: 10, alignItems: 'center' },
-  buttonText: { color: '#2e7d32', fontWeight: '600' },
+  buttonText: { color: '#2e7d32', fontWeight: '600', fontSize: 16 },
   loading: { marginTop: 8 },
   error: { color: '#c62828', marginTop: 8 },
 });
