@@ -4,9 +4,14 @@ export interface RecognizedItem {
   estimatedGrams: number | null;
 }
 
+export interface RecognitionResult {
+  items: RecognizedItem[];
+  dishNameSuggestions: string[];
+}
+
 export class DishRecognitionError extends Error {}
 
-export async function recognizeDish(imageBase64: string, productNames: string[]): Promise<RecognizedItem[]> {
+export async function recognizeDish(imageBase64: string, productNames: string[]): Promise<RecognitionResult> {
   const apiUrl = process.env.EXPO_PUBLIC_RECOGNITION_API_URL;
   const apiSecret = process.env.EXPO_PUBLIC_RECOGNITION_API_SECRET;
   if (!apiUrl || !apiSecret) {
@@ -32,6 +37,6 @@ export async function recognizeDish(imageBase64: string, productNames: string[])
     throw new DishRecognitionError('Recognition failed. Try again or add ingredients manually.');
   }
 
-  const data = (await response.json()) as { items?: RecognizedItem[] };
-  return data.items ?? [];
+  const data = (await response.json()) as { items?: RecognizedItem[]; dishNameSuggestions?: string[] };
+  return { items: data.items ?? [], dishNameSuggestions: data.dishNameSuggestions ?? [] };
 }

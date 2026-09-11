@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
-import { RecognizedItem } from '../services/dishRecognition';
+import { RecognitionResult } from '../services/dishRecognition';
 import { captureAndRecognizeDishPhoto, PhotoPickCancelledError } from '../services/dishPhotoCapture';
 
 interface Props {
-  onRecognized: (items: RecognizedItem[]) => void;
+  onRecognized: (result: RecognitionResult) => void;
 }
 
 export default function PhotoRecognitionButton({ onRecognized }: Props) {
@@ -15,8 +15,8 @@ export default function PhotoRecognitionButton({ onRecognized }: Props) {
     setError(null);
     setLoading(true);
     try {
-      const items = await captureAndRecognizeDishPhoto(source);
-      onRecognized(items);
+      const result = await captureAndRecognizeDishPhoto(source);
+      onRecognized(result);
     } catch (e) {
       if (!(e instanceof PhotoPickCancelledError)) {
         setError(e instanceof Error ? e.message : 'Recognition failed. Try again or add ingredients manually.');
