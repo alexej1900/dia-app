@@ -107,7 +107,7 @@ export function buildAnthropicRequestParams(body: RecognizeRequestBody) {
 
   return {
     model: 'claude-haiku-4-5',
-    max_tokens: 2048,
+    max_tokens: 3072,
     tool_choice: { type: 'tool' as const, name: RECOGNIZE_TOOL_NAME },
     tools: [buildToolDefinition()],
     messages: [
@@ -159,7 +159,7 @@ export function parseAnthropicToolResult(input: unknown, productNames: string[])
   });
 
   const resolvedDishNameSuggestions = Array.isArray(dishNameSuggestions)
-    ? dishNameSuggestions.filter((s): s is string => typeof s === 'string')
+    ? dishNameSuggestions.filter((s): s is string => typeof s === 'string' && s.trim().length > 0).slice(0, 3)
     : [];
 
   return { items: parsedItems, dishNameSuggestions: resolvedDishNameSuggestions };

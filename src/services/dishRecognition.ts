@@ -37,6 +37,9 @@ export async function recognizeDish(imageBase64: string, productNames: string[])
     throw new DishRecognitionError('Recognition failed. Try again or add ingredients manually.');
   }
 
-  const data = (await response.json()) as { items?: RecognizedItem[]; dishNameSuggestions?: string[] };
-  return { items: data.items ?? [], dishNameSuggestions: data.dishNameSuggestions ?? [] };
+  const data = (await response.json()) as { items?: unknown; dishNameSuggestions?: unknown };
+  return {
+    items: Array.isArray(data.items) ? data.items : [],
+    dishNameSuggestions: Array.isArray(data.dishNameSuggestions) ? data.dishNameSuggestions : [],
+  };
 }

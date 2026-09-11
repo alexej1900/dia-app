@@ -222,9 +222,15 @@ export default function DishFormScreen() {
         <Text style={styles.label}>Name</Text>
         {name.trim() === '' && nameSuggestions.length > 0 && (
           <View style={styles.suggestionRow}>
-            {nameSuggestions.map((suggestion) => (
-              <TouchableOpacity key={suggestion} style={styles.suggestionChip} onPress={() => setName(suggestion)}>
-                <Text style={styles.suggestionChipText}>{suggestion}</Text>
+            {nameSuggestions.map((suggestion, index) => (
+              <TouchableOpacity
+                key={`${suggestion}-${index}`}
+                style={styles.suggestionChip}
+                onPress={() => setName(suggestion)}
+              >
+                <Text style={styles.suggestionChipText} numberOfLines={1} ellipsizeMode="tail">
+                  {suggestion}
+                </Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -293,7 +299,15 @@ const styles = StyleSheet.create({
   label: { fontSize: 13, color: '#555', marginTop: 12 },
   input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 8, marginTop: 4 },
   suggestionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 },
-  suggestionChip: { borderWidth: 1, borderColor: '#2e7d32', borderRadius: 16, paddingVertical: 6, paddingHorizontal: 12 },
+  suggestionChip: {
+    borderWidth: 1,
+    borderColor: '#2e7d32',
+    borderRadius: 16,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    flexShrink: 1,
+    maxWidth: '100%',
+  },
   suggestionChipText: { color: '#2e7d32', fontSize: 14, fontWeight: '600' },
   ingredientRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8 },
   ingredientName: { flex: 1 },

@@ -117,4 +117,28 @@ describe('recognizeDish', () => {
 
     expect(result.dishNameSuggestions).toEqual([]);
   });
+
+  it('defaults items to an empty array when the response has a non-array value', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ items: 'not an array', dishNameSuggestions: [] }),
+    }) as unknown as typeof fetch;
+
+    const result = await recognizeDish('base64data', []);
+
+    expect(result.items).toEqual([]);
+  });
+
+  it('defaults dishNameSuggestions to an empty array when the response has a non-array value', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ items: [], dishNameSuggestions: 'not an array' }),
+    }) as unknown as typeof fetch;
+
+    const result = await recognizeDish('base64data', []);
+
+    expect(result.dishNameSuggestions).toEqual([]);
+  });
 });
