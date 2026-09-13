@@ -182,9 +182,11 @@ export default function DishFormScreen() {
     setError(null);
 
     let photoUri = existingPhotoUri;
+    let persisted: string | null = null;
     if (pendingPhotoUri) {
       try {
-        photoUri = await persistDishPhoto(pendingPhotoUri);
+        persisted = await persistDishPhoto(pendingPhotoUri);
+        photoUri = persisted;
       } catch {
         // Best-effort: a failed photo copy must never block saving the dish's
         // name/ingredients. Fall back to whatever photo the dish already had.
@@ -213,6 +215,12 @@ export default function DishFormScreen() {
       }
       navigation.goBack();
     } catch (e) {
+      // The DB write failed after we already copied a new photo file to
+      // permanent storage for this save attempt — delete it so it doesn't
+      // leak on disk (deleteDishPhoto is fail-soft and never throws).
+      if (persisted) {
+        await deleteDishPhoto(persisted);
+      }
       setError(e instanceof Error ? e.message : 'Failed to save dish');
     }
   };
