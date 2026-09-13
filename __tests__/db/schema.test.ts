@@ -81,4 +81,36 @@ describe('database schema', () => {
     const db = await createTestDatabase();
     await expect(migrateSchema(db)).resolves.not.toThrow();
   });
+
+  it('has the photo_uri column on dishes after a fresh create', async () => {
+    const db = await createTestDatabase();
+    const columns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(dishes)');
+    expect(columns.map((c) => c.name)).toContain('photo_uri');
+  });
+
+  it('migrateSchema adds photo_uri to a pre-existing dishes table that lacks it', async () => {
+    const db = await createTestDatabase();
+    // Simulate a database created before photo_uri existed.
+    await db.execAsync('DROP TABLE dishes');
+    await db.execAsync(`
+      CREATE TABLE dishes (
+        id TEXT PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    `);
+    const before = await db.getAllAsync<{ name: string }>('PRAGMA table_info(dishes)');
+    expect(before.map((c) => c.name)).not.toContain('photo_uri');
+
+    await migrateSchema(db);
+
+    const after = await db.getAllAsync<{ name: string }>('PRAGMA table_info(dishes)');
+    expect(after.map((c) => c.name)).toContain('photo_uri');
+  });
+
+  it('migrateSchema is a no-op that does not throw when photo_uri already exists', async () => {
+    const db = await createTestDatabase();
+    await expect(migrateSchema(db)).resolves.not.toThrow();
+  });
 });

@@ -4,7 +4,7 @@ import { RecognitionResult } from '../services/dishRecognition';
 import { captureAndRecognizeDishPhoto, PhotoPickCancelledError } from '../services/dishPhotoCapture';
 
 interface Props {
-  onRecognized: (result: RecognitionResult) => void;
+  onRecognized: (result: { recognition: RecognitionResult; photoUri: string }) => void;
 }
 
 export default function PhotoRecognitionButton({ onRecognized }: Props) {

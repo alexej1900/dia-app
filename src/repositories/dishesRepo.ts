@@ -11,6 +11,7 @@ export interface DishItemInput {
 export interface DishInput {
   name: string;
   items: DishItemInput[];
+  photoUri?: string | null;
 }
 
 export interface DishItem {
@@ -24,6 +25,7 @@ export interface DishItem {
 export interface Dish {
   id: string;
   name: string;
+  photoUri: string | null;
   items: DishItem[];
   totals: DishTotals;
   createdAt: string;
@@ -33,6 +35,7 @@ export interface Dish {
 export interface DishSummary {
   id: string;
   name: string;
+  photoUri: string | null;
   totalWeight: number;
   totalCarbs: number;
   totalW: number;
@@ -42,6 +45,7 @@ export interface DishSummary {
 interface DishRow {
   id: string;
   name: string;
+  photo_uri: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -94,9 +98,10 @@ export async function createDish(db: SqlExecutor, input: DishInput): Promise<Dis
   const id = generateId();
 
   await db.withTransactionAsync(async () => {
-    await db.runAsync('INSERT INTO dishes (id, name, created_at, updated_at) VALUES (?, ?, ?, ?)', [
+    await db.runAsync('INSERT INTO dishes (id, name, photo_uri, created_at, updated_at) VALUES (?, ?, ?, ?, ?)', [
       id,
       input.name,
+      input.photoUri ?? null,
       now,
       now,
     ]);
@@ -114,7 +119,12 @@ export async function updateDish(db: SqlExecutor, id: string, input: DishInput):
   }
   const now = new Date().toISOString();
   await db.withTransactionAsync(async () => {
-    await db.runAsync('UPDATE dishes SET name = ?, updated_at = ? WHERE id = ?', [input.name, now, id]);
+    await db.runAsync('UPDATE dishes SET name = ?, photo_uri = ?, updated_at = ? WHERE id = ?', [
+      input.name,
+      input.photoUri ?? null,
+      now,
+      id,
+    ]);
     await replaceItemsRaw(db, id, input.items);
   });
 }
@@ -130,6 +140,7 @@ export async function getDish(db: SqlExecutor, id: string): Promise<Dish | null>
   return {
     id: row.id,
     name: row.name,
+    photoUri: row.photo_uri,
     items,
     totals: dishTotals(items),
     createdAt: row.created_at,
@@ -138,8 +149,8 @@ export async function getDish(db: SqlExecutor, id: string): Promise<Dish | null>
 }
 
 export async function listDishes(db: SqlExecutor, searchTerm = ''): Promise<DishSummary[]> {
-  const rows = await db.getAllAsync<{ id: string; name: string }>(
-    `SELECT dishes.id AS id, dishes.name AS name
+  const rows = await db.getAllAsync<{ id: string; name: string; photo_uri: string | null }>(
+    `SELECT dishes.id AS id, dishes.name AS name, dishes.photo_uri AS photo_uri
      FROM dishes
      WHERE dishes.name LIKE ?
      ORDER BY dishes.name COLLATE NOCASE`,
@@ -153,6 +164,7 @@ export async function listDishes(db: SqlExecutor, searchTerm = ''): Promise<Dish
     summaries.push({
       id: row.id,
       name: row.name,
+      photoUri: row.photo_uri,
       totalWeight: totals.totalWeight,
       totalCarbs: totals.totalCarbs,
       totalW: totals.totalW,

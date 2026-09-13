@@ -49,7 +49,7 @@ describe('captureAndRecognizeDishPhoto', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    saveAsyncMock = jest.fn().mockResolvedValue({ base64: 'abc123' });
+    saveAsyncMock = jest.fn().mockResolvedValue({ uri: 'file:///cache/resized.jpg', base64: 'abc123' });
     const renderAsync = jest.fn().mockResolvedValue({ saveAsync: saveAsyncMock });
     const resize = jest.fn().mockReturnValue({ renderAsync });
     (ImageManipulator.manipulate as jest.Mock).mockReturnValue({ resize });
@@ -75,8 +75,11 @@ describe('captureAndRecognizeDishPhoto', () => {
     expect(ImagePicker.launchCameraAsync).toHaveBeenCalled();
     expect(ImagePicker.launchImageLibraryAsync).not.toHaveBeenCalled();
     expect(result).toEqual({
-      items: [{ name: 'Rice', matchedProductName: 'Rice', estimatedGrams: 100 }],
-      dishNameSuggestions: [],
+      recognition: {
+        items: [{ name: 'Rice', matchedProductName: 'Rice', estimatedGrams: 100 }],
+        dishNameSuggestions: [],
+      },
+      photoUri: 'file:///cache/resized.jpg',
     });
   });
 
@@ -148,7 +151,7 @@ describe('captureAndRecognizeDishPhoto', () => {
       canceled: false,
       assets: [{ uri: 'file://photo.jpg', width: 800, height: 600 }],
     });
-    const saveAsync = jest.fn().mockResolvedValue({ base64: undefined });
+    const saveAsync = jest.fn().mockResolvedValue({ uri: 'file:///cache/resized.jpg', base64: undefined });
     const renderAsync = jest.fn().mockResolvedValue({ saveAsync });
     const resize = jest.fn().mockReturnValue({ renderAsync });
     (ImageManipulator.manipulate as jest.Mock).mockReturnValue({ resize });
@@ -167,5 +170,17 @@ describe('captureAndRecognizeDishPhoto', () => {
 
     expect(recognizeDish).toHaveBeenCalledWith('abc123', ['Rice', 'Beans']);
     expect(saveAsyncMock).toHaveBeenCalledWith({ format: SaveFormat.JPEG, compress: 0.7, base64: true });
+  });
+
+  it('returns the resized image local uri alongside the recognition result', async () => {
+    (ImagePicker.requestCameraPermissionsAsync as jest.Mock).mockResolvedValue({ granted: true });
+    (ImagePicker.launchCameraAsync as jest.Mock).mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file://photo.jpg', width: 800, height: 600 }],
+    });
+
+    const result = await captureAndRecognizeDishPhoto('camera');
+
+    expect(result.photoUri).toBe('file:///cache/resized.jpg');
   });
 });

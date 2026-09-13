@@ -136,4 +136,58 @@ describe('dishesRepo', () => {
     const results = await listDishes(db, 'Estimated bowl');
     expect(results[0].hasEstimatedItems).toBe(true);
   });
+
+  it('persists and round-trips a photoUri', async () => {
+    const rice = await createProduct(db, { name: 'Rice', carbsPer100g: 28 });
+    const dish = await createDish(db, {
+      name: 'Rice bowl',
+      items: [{ productId: rice.id, grams: 100, isEstimated: false }],
+      photoUri: 'file:///document/dish-photos/abc.jpg',
+    });
+
+    expect(dish.photoUri).toBe('file:///document/dish-photos/abc.jpg');
+
+    const reloaded = await getDish(db, dish.id);
+    expect(reloaded?.photoUri).toBe('file:///document/dish-photos/abc.jpg');
+  });
+
+  it('defaults photoUri to null when not provided', async () => {
+    const rice = await createProduct(db, { name: 'Rice', carbsPer100g: 28 });
+    const dish = await createDish(db, {
+      name: 'Rice bowl',
+      items: [{ productId: rice.id, grams: 100, isEstimated: false }],
+    });
+
+    expect(dish.photoUri).toBeNull();
+  });
+
+  it('updates photoUri on an existing dish', async () => {
+    const rice = await createProduct(db, { name: 'Rice', carbsPer100g: 28 });
+    const dish = await createDish(db, {
+      name: 'Rice bowl',
+      items: [{ productId: rice.id, grams: 100, isEstimated: false }],
+      photoUri: 'file:///document/dish-photos/old.jpg',
+    });
+
+    await updateDish(db, dish.id, {
+      name: 'Rice bowl',
+      items: [{ productId: rice.id, grams: 100, isEstimated: false }],
+      photoUri: 'file:///document/dish-photos/new.jpg',
+    });
+
+    const updated = await getDish(db, dish.id);
+    expect(updated?.photoUri).toBe('file:///document/dish-photos/new.jpg');
+  });
+
+  it('includes photoUri in dish summaries from listDishes', async () => {
+    const rice = await createProduct(db, { name: 'Rice', carbsPer100g: 28 });
+    await createDish(db, {
+      name: 'Rice bowl',
+      items: [{ productId: rice.id, grams: 100, isEstimated: false }],
+      photoUri: 'file:///document/dish-photos/abc.jpg',
+    });
+
+    const results = await listDishes(db, 'Rice bowl');
+    expect(results[0].photoUri).toBe('file:///document/dish-photos/abc.jpg');
+  });
 });

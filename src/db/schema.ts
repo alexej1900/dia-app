@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS products (
 CREATE TABLE IF NOT EXISTS dishes (
   id TEXT PRIMARY KEY NOT NULL,
   name TEXT NOT NULL,
+  photo_uri TEXT,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );
@@ -36,7 +37,13 @@ CREATE TABLE IF NOT EXISTS dish_items (
 // SQLite drivers this app runs on (native iOS/Android via expo-sqlite, web via
 // wa-sqlite, sql.js in tests). Checking reality directly avoids that dependency.
 export async function migrateSchema(db: SqlExecutor): Promise<void> {
-  const columns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(dish_items)');
-  if (columns.some((c) => c.name === 'is_estimated')) return;
-  await db.execAsync('ALTER TABLE dish_items ADD COLUMN is_estimated INTEGER NOT NULL DEFAULT 0');
+  const dishItemsColumns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(dish_items)');
+  if (!dishItemsColumns.some((c) => c.name === 'is_estimated')) {
+    await db.execAsync('ALTER TABLE dish_items ADD COLUMN is_estimated INTEGER NOT NULL DEFAULT 0');
+  }
+
+  const dishesColumns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(dishes)');
+  if (!dishesColumns.some((c) => c.name === 'photo_uri')) {
+    await db.execAsync('ALTER TABLE dishes ADD COLUMN photo_uri TEXT');
+  }
 }
