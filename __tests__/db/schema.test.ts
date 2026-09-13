@@ -113,4 +113,38 @@ describe('database schema', () => {
     const db = await createTestDatabase();
     await expect(migrateSchema(db)).resolves.not.toThrow();
   });
+
+  it('has the name_ru column on products after a fresh create', async () => {
+    const db = await createTestDatabase();
+    const columns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(products)');
+    expect(columns.map((c) => c.name)).toContain('name_ru');
+  });
+
+  it('migrateSchema adds name_ru to a pre-existing products table that lacks it', async () => {
+    const db = await createTestDatabase();
+    // Simulate a database created before name_ru existed.
+    await db.execAsync('DROP TABLE products');
+    await db.execAsync(`
+      CREATE TABLE products (
+        id TEXT PRIMARY KEY NOT NULL,
+        name TEXT NOT NULL,
+        carbs_per_100g REAL NOT NULL CHECK (carbs_per_100g >= 0),
+        is_seed INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+    `);
+    const before = await db.getAllAsync<{ name: string }>('PRAGMA table_info(products)');
+    expect(before.map((c) => c.name)).not.toContain('name_ru');
+
+    await migrateSchema(db);
+
+    const after = await db.getAllAsync<{ name: string }>('PRAGMA table_info(products)');
+    expect(after.map((c) => c.name)).toContain('name_ru');
+  });
+
+  it('migrateSchema is a no-op that does not throw when name_ru already exists', async () => {
+    const db = await createTestDatabase();
+    await expect(migrateSchema(db)).resolves.not.toThrow();
+  });
 });

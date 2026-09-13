@@ -6,6 +6,7 @@ PRAGMA foreign_keys = ON;
 CREATE TABLE IF NOT EXISTS products (
   id TEXT PRIMARY KEY NOT NULL,
   name TEXT NOT NULL,
+  name_ru TEXT,
   carbs_per_100g REAL NOT NULL CHECK (carbs_per_100g >= 0),
   is_seed INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL,
@@ -45,5 +46,10 @@ export async function migrateSchema(db: SqlExecutor): Promise<void> {
   const dishesColumns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(dishes)');
   if (!dishesColumns.some((c) => c.name === 'photo_uri')) {
     await db.execAsync('ALTER TABLE dishes ADD COLUMN photo_uri TEXT');
+  }
+
+  const productsColumns = await db.getAllAsync<{ name: string }>('PRAGMA table_info(products)');
+  if (!productsColumns.some((c) => c.name === 'name_ru')) {
+    await db.execAsync('ALTER TABLE products ADD COLUMN name_ru TEXT');
   }
 }
