@@ -1,5 +1,6 @@
 export interface OpenFoodFactsMatch {
   name: string;
+  nameRu: string | null;
   brand: string | null;
   carbsPer100g: number;
 }
@@ -8,6 +9,7 @@ export class OpenFoodFactsError extends Error {}
 
 interface OpenFoodFactsProduct {
   product_name?: string;
+  product_name_ru?: string;
   brands?: string;
   nutriments?: { carbohydrates_100g?: number };
 }
@@ -48,7 +50,7 @@ async function fetchWithRetry(url: string): Promise<Response> {
 export async function searchCarbsByName(name: string): Promise<OpenFoodFactsMatch[]> {
   const url = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(
     name
-  )}&fields=product_name,brands,nutriments&json=1&page_size=20`;
+  )}&fields=product_name,product_name_ru,brands,nutriments&json=1&page_size=20`;
 
   let response: Response;
   try {
@@ -71,6 +73,7 @@ export async function searchCarbsByName(name: string): Promise<OpenFoodFactsMatc
     )
     .map((p) => ({
       name: p.product_name!,
+      nameRu: p.product_name_ru?.trim() ? p.product_name_ru.trim() : null,
       brand: p.brands ?? null,
       carbsPer100g: p.nutriments.carbohydrates_100g,
     }));
