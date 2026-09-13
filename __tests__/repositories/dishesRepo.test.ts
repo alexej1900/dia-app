@@ -190,4 +190,24 @@ describe('dishesRepo', () => {
     const results = await listDishes(db, 'Rice bowl');
     expect(results[0].photoUri).toBe('file:///document/dish-photos/abc.jpg');
   });
+
+  it('includes a product\'s nameRu on its dish items', async () => {
+    const rice = await createProduct(db, { name: 'Rice', carbsPer100g: 28, nameRu: 'Рис' });
+    const dish = await createDish(db, {
+      name: 'Rice bowl',
+      items: [{ productId: rice.id, grams: 100, isEstimated: false }],
+    });
+
+    expect(dish.items[0].productNameRu).toBe('Рис');
+  });
+
+  it('nulls out productNameRu when the product has no translation', async () => {
+    const rice = await createProduct(db, { name: 'Rice', carbsPer100g: 28 });
+    const dish = await createDish(db, {
+      name: 'Rice bowl',
+      items: [{ productId: rice.id, grams: 100, isEstimated: false }],
+    });
+
+    expect(dish.items[0].productNameRu).toBeNull();
+  });
 });

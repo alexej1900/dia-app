@@ -4,6 +4,7 @@ import type { Product } from '../../src/repositories/productsRepo';
 const product: Product = {
   id: 'p1',
   name: 'Rice',
+  nameRu: null,
   carbsPer100g: 28,
   isSeed: false,
   createdAt: '2026-01-01T00:00:00.000Z',

@@ -27,6 +27,7 @@ import {
 import { gramsPerW } from '../calculations/carbs';
 import { searchCarbsByName, OpenFoodFactsMatch, OpenFoodFactsError } from '../services/openFoodFacts';
 import { estimateCarbsByName, EstimateCarbsError } from '../services/estimateCarbsByName';
+import { translateProductName } from '../services/translateProductName';
 import type { ProductsStackParamList } from '../navigation/RootNavigator';
 
 type Nav = NativeStackNavigationProp<ProductsStackParamList, 'ProductForm'>;
@@ -39,6 +40,7 @@ export default function ProductFormScreen() {
   const prefillName = route.params?.prefillName;
 
   const [name, setName] = useState(prefillName ?? '');
+  const [nameRu, setNameRu] = useState<string | null>(null);
   const [carbsText, setCarbsText] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -55,6 +57,7 @@ export default function ProductFormScreen() {
       const product = await getProduct(db, productId);
       if (product) {
         setName(product.name);
+        setNameRu(product.nameRu);
         setCarbsText(String(product.carbsPer100g));
       }
     })();
@@ -73,12 +76,25 @@ export default function ProductFormScreen() {
       return;
     }
     setError(null);
+
+    let resolvedNameRu = nameRu;
+    if (resolvedNameRu === null) {
+      try {
+        resolvedNameRu = await translateProductName(name.trim());
+      } catch {
+        // Best-effort: a failed translation must never block saving the
+        // product itself. The name is simply displayed without brackets.
+        resolvedNameRu = null;
+      }
+    }
+
     try {
       const db = await openDatabase();
+      const input = { name: name.trim(), nameRu: resolvedNameRu, carbsPer100g: carbsValue };
       if (productId) {
-        await updateProduct(db, productId, { name: name.trim(), carbsPer100g: carbsValue });
+        await updateProduct(db, productId, input);
       } else {
-        const created = await createProduct(db, { name: name.trim(), carbsPer100g: carbsValue });
+        const created = await createProduct(db, input);
         route.params?.onCreated?.(created);
       }
       navigation.goBack();
@@ -128,6 +144,9 @@ export default function ProductFormScreen() {
 
   const applyLookupResult = (match: OpenFoodFactsMatch) => {
     setCarbsText(String(match.carbsPer100g));
+    if (match.nameRu) {
+      setNameRu(match.nameRu);
+    }
     setLookupVisible(false);
   };
 
@@ -156,7 +175,15 @@ export default function ProductFormScreen() {
     >
       <ScrollView contentContainerStyle={styles.formContainer}>
         <Text style={styles.label}>Name</Text>
-        <TextInput style={styles.input} value={name} onChangeText={setName} placeholder="e.g. Rice" />
+        <TextInput
+          style={styles.input}
+          value={name}
+          onChangeText={(text) => {
+            setName(text);
+            setNameRu(null);
+          }}
+          placeholder="e.g. Rice"
+        />
 
         <Text style={styles.label}>Carbs per 100g</Text>
         <TextInput

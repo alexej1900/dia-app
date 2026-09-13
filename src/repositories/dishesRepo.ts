@@ -17,6 +17,7 @@ export interface DishInput {
 export interface DishItem {
   productId: string;
   productName: string;
+  productNameRu: string | null;
   carbsPer100g: number;
   grams: number;
   isEstimated: boolean;
@@ -53,6 +54,7 @@ interface DishRow {
 interface DishItemRow {
   product_id: string;
   name: string;
+  name_ru: string | null;
   carbs_per_100g: number;
   grams: number;
   is_estimated: number;
@@ -60,7 +62,7 @@ interface DishItemRow {
 
 async function loadItems(db: SqlExecutor, dishId: string): Promise<DishItem[]> {
   const rows = await db.getAllAsync<DishItemRow>(
-    `SELECT dish_items.product_id AS product_id, products.name AS name,
+    `SELECT dish_items.product_id AS product_id, products.name AS name, products.name_ru AS name_ru,
             products.carbs_per_100g AS carbs_per_100g, dish_items.grams AS grams,
             dish_items.is_estimated AS is_estimated
      FROM dish_items
@@ -72,6 +74,7 @@ async function loadItems(db: SqlExecutor, dishId: string): Promise<DishItem[]> {
   return rows.map((row) => ({
     productId: row.product_id,
     productName: row.name,
+    productNameRu: row.name_ru,
     carbsPer100g: row.carbs_per_100g,
     grams: row.grams,
     isEstimated: row.is_estimated === 1,

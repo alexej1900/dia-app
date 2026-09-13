@@ -4,6 +4,7 @@ import type { Product } from '../../src/repositories/productsRepo';
 const product: Product = {
   id: 'p1',
   name: 'Rice',
+  nameRu: null,
   carbsPer100g: 28,
   isSeed: false,
   createdAt: '2026-01-01T00:00:00.000Z',
@@ -16,10 +17,16 @@ describe('buildIngredientRow', () => {
     expect(row).toEqual({
       productId: 'p1',
       productName: 'Rice',
+      productNameRu: null,
       carbsPer100g: 28,
       gramsText: '150',
       isEstimated: true,
     });
+  });
+
+  it('carries the product\'s Russian name through', () => {
+    const row = buildIngredientRow({ ...product, nameRu: 'Рис' }, 150);
+    expect(row.productNameRu).toBe('Рис');
   });
 
   it('leaves gramsText blank and unflagged when the estimate is null', () => {
@@ -58,6 +65,7 @@ describe('applyGramsEdit', () => {
     const estimated: IngredientRow = {
       productId: 'p1',
       productName: 'Rice',
+      productNameRu: null,
       carbsPer100g: 28,
       gramsText: '150',
       isEstimated: true,
@@ -70,6 +78,7 @@ describe('applyGramsEdit', () => {
     const manual: IngredientRow = {
       productId: 'p1',
       productName: 'Rice',
+      productNameRu: null,
       carbsPer100g: 28,
       gramsText: '',
       isEstimated: false,

@@ -19,7 +19,41 @@ describe('searchCarbsByName', () => {
 
     const results = await searchCarbsByName('bread');
 
-    expect(results).toEqual([{ name: 'White Bread', brand: 'Acme', carbsPer100g: 49 }]);
+    expect(results).toEqual([{ name: 'White Bread', brand: 'Acme', carbsPer100g: 49, nameRu: null }]);
+  });
+
+  it('includes the Russian name when Open Food Facts has one', async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        products: [
+          {
+            product_name: 'White Bread',
+            product_name_ru: 'Белый хлеб',
+            brands: 'Acme',
+            nutriments: { carbohydrates_100g: 49 },
+          },
+        ],
+      }),
+    }) as unknown as typeof fetch;
+
+    const results = await searchCarbsByName('bread');
+
+    expect(results[0].nameRu).toBe('Белый хлеб');
+  });
+
+  it('requests the product_name_ru field', async () => {
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ products: [] }),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    await searchCarbsByName('bread');
+
+    expect(fetchMock.mock.calls[0][0]).toContain('product_name_ru');
   });
 
   it('throws OpenFoodFactsError when the network request fails', async () => {
@@ -51,7 +85,7 @@ describe('searchCarbsByName', () => {
 
     const results = await searchCarbsByName('butter');
 
-    expect(results).toEqual([{ name: 'Butter', brand: null, carbsPer100g: 0.1 }]);
+    expect(results).toEqual([{ name: 'Butter', brand: null, carbsPer100g: 0.1, nameRu: null }]);
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 

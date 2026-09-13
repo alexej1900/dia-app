@@ -3,6 +3,7 @@ import type { Product } from '../repositories/productsRepo';
 export interface IngredientRow {
   productId: string;
   productName: string;
+  productNameRu: string | null;
   carbsPer100g: number;
   gramsText: string;
   isEstimated: boolean;
@@ -16,6 +17,7 @@ export function buildIngredientRow(product: Product, estimatedGrams: number | nu
   return {
     productId: product.id,
     productName: product.name,
+    productNameRu: product.nameRu,
     carbsPer100g: product.carbsPer100g,
     gramsText: resolvedEstimate !== null ? String(resolvedEstimate) : '',
     isEstimated: resolvedEstimate !== null,
