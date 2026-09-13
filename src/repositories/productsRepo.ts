@@ -4,6 +4,7 @@ import { generateId } from '../utils/id';
 export interface Product {
   id: string;
   name: string;
+  nameRu: string | null;
   carbsPer100g: number;
   isSeed: boolean;
   createdAt: string;
@@ -13,11 +14,13 @@ export interface Product {
 export interface ProductInput {
   name: string;
   carbsPer100g: number;
+  nameRu?: string | null;
 }
 
 interface ProductRow {
   id: string;
   name: string;
+  name_ru: string | null;
   carbs_per_100g: number;
   is_seed: number;
   created_at: string;
@@ -28,6 +31,7 @@ function rowToProduct(row: ProductRow): Product {
   return {
     id: row.id,
     name: row.name,
+    nameRu: row.name_ru,
     carbsPer100g: row.carbs_per_100g,
     isSeed: row.is_seed === 1,
     createdAt: row.created_at,
@@ -45,21 +49,28 @@ export class ProductInUseError extends Error {
 export async function createProduct(db: SqlExecutor, input: ProductInput, isSeed = false): Promise<Product> {
   const now = new Date().toISOString();
   const id = generateId();
+  const nameRu = input.nameRu ?? null;
   await db.runAsync(
-    'INSERT INTO products (id, name, carbs_per_100g, is_seed, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)',
-    [id, input.name, input.carbsPer100g, isSeed ? 1 : 0, now, now]
+    'INSERT INTO products (id, name, name_ru, carbs_per_100g, is_seed, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    [id, input.name, nameRu, input.carbsPer100g, isSeed ? 1 : 0, now, now]
   );
-  return { id, name: input.name, carbsPer100g: input.carbsPer100g, isSeed, createdAt: now, updatedAt: now };
+  return { id, name: input.name, nameRu, carbsPer100g: input.carbsPer100g, isSeed, createdAt: now, updatedAt: now };
 }
 
 export async function updateProduct(db: SqlExecutor, id: string, input: ProductInput): Promise<void> {
   const now = new Date().toISOString();
-  await db.runAsync('UPDATE products SET name = ?, carbs_per_100g = ?, updated_at = ? WHERE id = ?', [
+  await db.runAsync('UPDATE products SET name = ?, name_ru = ?, carbs_per_100g = ?, updated_at = ? WHERE id = ?', [
     input.name,
+    input.nameRu ?? null,
     input.carbsPer100g,
     now,
     id,
   ]);
+}
+
+export async function setProductNameRu(db: SqlExecutor, id: string, nameRu: string | null): Promise<void> {
+  const now = new Date().toISOString();
+  await db.runAsync('UPDATE products SET name_ru = ?, updated_at = ? WHERE id = ?', [nameRu, now, id]);
 }
 
 export async function getProduct(db: SqlExecutor, id: string): Promise<Product | null> {

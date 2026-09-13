@@ -6,6 +6,7 @@ import {
   listProducts,
   deleteProduct,
   getProductByName,
+  setProductNameRu,
   ProductInUseError,
 } from '../../src/repositories/productsRepo';
 import { SqlExecutor } from '../../src/db/sqlExecutor';
@@ -79,5 +80,46 @@ describe('productsRepo', () => {
     await createProduct(db, { name: 'Chicken Breast', carbsPer100g: 0 });
     const found = await getProductByName(db, '  Chicken Breast  ');
     expect(found?.name).toBe('Chicken Breast');
+  });
+
+  it('persists and round-trips a nameRu on create', async () => {
+    const created = await createProduct(db, { name: 'Apple', carbsPer100g: 14, nameRu: 'Яблоко' });
+    expect(created.nameRu).toBe('Яблоко');
+    const fetched = await getProduct(db, created.id);
+    expect(fetched?.nameRu).toBe('Яблоко');
+  });
+
+  it('defaults nameRu to null when not provided on create', async () => {
+    const created = await createProduct(db, { name: 'Apple', carbsPer100g: 14 });
+    expect(created.nameRu).toBeNull();
+  });
+
+  it('updates nameRu on an existing product', async () => {
+    const created = await createProduct(db, { name: 'Apple', carbsPer100g: 14 });
+    await updateProduct(db, created.id, { name: 'Apple', carbsPer100g: 14, nameRu: 'Яблоко' });
+    const fetched = await getProduct(db, created.id);
+    expect(fetched?.nameRu).toBe('Яблоко');
+  });
+
+  it('clears nameRu on update when explicitly set to null', async () => {
+    const created = await createProduct(db, { name: 'Apple', carbsPer100g: 14, nameRu: 'Яблоко' });
+    await updateProduct(db, created.id, { name: 'Apple', carbsPer100g: 14, nameRu: null });
+    const fetched = await getProduct(db, created.id);
+    expect(fetched?.nameRu).toBeNull();
+  });
+
+  it('includes nameRu in listProducts results', async () => {
+    await createProduct(db, { name: 'Apple', carbsPer100g: 14, nameRu: 'Яблоко' });
+    const results = await listProducts(db, 'Apple');
+    expect(results[0].nameRu).toBe('Яблоко');
+  });
+
+  it('setProductNameRu updates only the nameRu field', async () => {
+    const created = await createProduct(db, { name: 'Apple', carbsPer100g: 14 });
+    await setProductNameRu(db, created.id, 'Яблоко');
+    const fetched = await getProduct(db, created.id);
+    expect(fetched?.nameRu).toBe('Яблоко');
+    expect(fetched?.name).toBe('Apple');
+    expect(fetched?.carbsPer100g).toBe(14);
   });
 });
