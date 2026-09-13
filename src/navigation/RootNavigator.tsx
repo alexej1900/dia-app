@@ -65,10 +65,24 @@ function DishesStackNavigator() {
   );
 }
 
+const TAB_ACTIVE_COLOR = '#2e7d32';
+const TAB_INACTIVE_COLOR = '#888';
+const TAB_ACTIVE_BACKGROUND = '#e8f5e9';
+const TAB_DIVIDER_COLOR = '#e0e0e0';
+
 export default function RootNavigator() {
   return (
     <NavigationContainer>
-      <Tab.Navigator screenOptions={{ headerShown: false }}>
+      <Tab.Navigator
+        screenOptions={{
+          headerShown: false,
+          tabBarLabelPosition: 'beside-icon',
+          tabBarActiveTintColor: TAB_ACTIVE_COLOR,
+          tabBarInactiveTintColor: TAB_INACTIVE_COLOR,
+          tabBarActiveBackgroundColor: TAB_ACTIVE_BACKGROUND,
+          tabBarLabelStyle: { fontSize: 15, fontWeight: '600' },
+        }}
+      >
         <Tab.Screen
           name="ProductsTab"
           component={ProductsStackNavigator}
@@ -83,6 +97,7 @@ export default function RootNavigator() {
           options={{
             title: 'Dishes',
             tabBarIcon: ({ color, size }) => <Ionicons name="restaurant-outline" size={size} color={color} />,
+            tabBarItemStyle: { borderLeftWidth: 1, borderLeftColor: TAB_DIVIDER_COLOR },
           }}
         />
       </Tab.Navigator>
