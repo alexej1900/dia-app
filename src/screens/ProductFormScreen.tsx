@@ -26,6 +26,7 @@ import {
 } from '../repositories/productsRepo';
 import { gramsPerW } from '../calculations/carbs';
 import { searchCarbsByName, OpenFoodFactsMatch, OpenFoodFactsError } from '../services/openFoodFacts';
+import { estimateCarbsByName, EstimateCarbsError } from '../services/estimateCarbsByName';
 import type { ProductsStackParamList } from '../navigation/RootNavigator';
 
 type Nav = NativeStackNavigationProp<ProductsStackParamList, 'ProductForm'>;
@@ -45,6 +46,7 @@ export default function ProductFormScreen() {
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupError, setLookupError] = useState<string | null>(null);
   const [lookupResults, setLookupResults] = useState<OpenFoodFactsMatch[]>([]);
+  const [aiEstimateLoading, setAiEstimateLoading] = useState(false);
 
   useEffect(() => {
     if (!productId) return;
@@ -129,6 +131,24 @@ export default function ProductFormScreen() {
     setLookupVisible(false);
   };
 
+  const handleAiEstimate = async () => {
+    setAiEstimateLoading(true);
+    setLookupError(null);
+    try {
+      const estimate = await estimateCarbsByName(name.trim());
+      if (estimate === null) {
+        setLookupError("AI couldn't estimate this confidently, enter manually");
+      } else {
+        setCarbsText(String(estimate));
+        setLookupVisible(false);
+      }
+    } catch (e) {
+      setLookupError(e instanceof EstimateCarbsError ? e.message : 'Estimate failed, enter manually');
+    } finally {
+      setAiEstimateLoading(false);
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       style={styles.flex}
@@ -185,6 +205,19 @@ export default function ProductFormScreen() {
               )}
             />
           )}
+          {!lookupLoading && lookupResults.length === 0 && name.trim() !== '' && (
+            <TouchableOpacity
+              style={styles.aiEstimateButton}
+              onPress={handleAiEstimate}
+              disabled={aiEstimateLoading}
+            >
+              {aiEstimateLoading ? (
+                <ActivityIndicator color="#2e7d32" />
+              ) : (
+                <Text style={styles.aiEstimateButtonText}>Estimate with AI</Text>
+              )}
+            </TouchableOpacity>
+          )}
           <TouchableOpacity style={styles.deleteButton} onPress={() => setLookupVisible(false)}>
             <Text style={styles.deleteButtonText}>Close</Text>
           </TouchableOpacity>
@@ -222,6 +255,14 @@ const styles = StyleSheet.create({
     borderColor: '#2e7d32',
   },
   lookupButtonText: { color: '#2e7d32', fontWeight: '600', fontSize: 16 },
+  aiEstimateButton: {
+    marginTop: 12,
+    borderRadius: 8,
+    padding: 12,
+    alignItems: 'center',
+    backgroundColor: '#2e7d32',
+  },
+  aiEstimateButtonText: { color: '#fff', fontWeight: '600', fontSize: 16 },
   matchRow: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#eee' },
   name: { fontSize: 16, fontWeight: '600' },
   detail: { fontSize: 13, color: '#555' },
