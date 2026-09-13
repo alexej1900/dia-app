@@ -7,7 +7,9 @@ import { recognizeDish, RecognitionResult, DishRecognitionError } from './dishRe
 export class PhotoPermissionDeniedError extends Error {}
 export class PhotoPickCancelledError extends Error {}
 
-export async function captureAndRecognizeDishPhoto(source: 'camera' | 'gallery'): Promise<RecognitionResult> {
+export async function captureAndRecognizeDishPhoto(
+  source: 'camera' | 'gallery'
+): Promise<{ recognition: RecognitionResult; photoUri: string }> {
   const permission =
     source === 'camera'
       ? await ImagePicker.requestCameraPermissionsAsync()
@@ -42,5 +44,6 @@ export async function captureAndRecognizeDishPhoto(source: 'camera' | 'gallery')
 
   const db = await openDatabase();
   const productNames = (await listProducts(db, '')).map((p) => p.name);
-  return recognizeDish(saved.base64, productNames);
+  const recognition = await recognizeDish(saved.base64, productNames);
+  return { recognition, photoUri: saved.uri };
 }
