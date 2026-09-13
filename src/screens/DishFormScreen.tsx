@@ -10,7 +10,9 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Image,
 } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { openDatabase } from '../db/database';
@@ -22,6 +24,7 @@ import type { RecognitionResult } from '../services/dishRecognition';
 import type { DishesStackParamList } from '../navigation/RootNavigator';
 import { buildIngredientRow, applyGramsEdit, IngredientRow } from './dishFormHelpers';
 import { captureAndRecognizeDishPhoto, PhotoPickCancelledError } from '../services/dishPhotoCapture';
+import { persistDishPhoto, deleteDishPhoto } from '../services/dishPhotoStorage';
 import { ESTIMATED_ITEMS_WARNING, ESTIMATE_WARNING_COLOR } from '../constants/estimateWarning';
 
 type Nav = NativeStackNavigationProp<DishesStackParamList, 'DishForm'>;
@@ -38,15 +41,18 @@ export default function DishFormScreen() {
   const [matches, setMatches] = useState<Product[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [nameSuggestions, setNameSuggestions] = useState<string[]>([]);
+  const [existingPhotoUri, setExistingPhotoUri] = useState<string | null>(null);
+  const [pendingPhotoUri, setPendingPhotoUri] = useState<string | null>(null);
 
   const [pendingUnmatchedNames, setPendingUnmatchedNames] = useState<
     { name: string; estimatedGrams: number | null }[]
   >([]);
 
-  const handleRecognized = (result: RecognitionResult) => {
-    setNameSuggestions(result.dishNameSuggestions);
+  const handleRecognized = ({ recognition, photoUri }: { recognition: RecognitionResult; photoUri: string }) => {
+    setNameSuggestions(recognition.dishNameSuggestions);
+    setPendingPhotoUri(photoUri);
     navigation.navigate('PhotoReview', {
-      items: result.items,
+      items: recognition.items,
       onConfirm: (confirmResult) => {
         confirmResult.matchedProducts.forEach(({ product, estimatedGrams }) =>
           addIngredient(product, estimatedGrams)
@@ -106,6 +112,7 @@ export default function DishFormScreen() {
       const dish = await getDish(db, dishId);
       if (dish) {
         setName(dish.name);
+        setExistingPhotoUri(dish.photoUri);
         setItems(
           dish.items.map((item) => ({
             productId: item.productId,
@@ -173,6 +180,18 @@ export default function DishFormScreen() {
       }
     }
     setError(null);
+
+    let photoUri = existingPhotoUri;
+    if (pendingPhotoUri) {
+      try {
+        photoUri = await persistDishPhoto(pendingPhotoUri);
+      } catch {
+        // Best-effort: a failed photo copy must never block saving the dish's
+        // name/ingredients. Fall back to whatever photo the dish already had.
+        photoUri = existingPhotoUri;
+      }
+    }
+
     try {
       const db = await openDatabase();
       const input = {
@@ -182,11 +201,15 @@ export default function DishFormScreen() {
           grams: item.grams,
           isEstimated: item.isEstimated,
         })),
+        photoUri,
       };
       if (dishId) {
         await updateDish(db, dishId, input);
       } else {
         await createDish(db, input);
+      }
+      if (photoUri !== existingPhotoUri) {
+        await deleteDishPhoto(existingPhotoUri);
       }
       navigation.goBack();
     } catch (e) {
@@ -204,6 +227,7 @@ export default function DishFormScreen() {
         onPress: async () => {
           const db = await openDatabase();
           await deleteDish(db, dishId);
+          await deleteDishPhoto(existingPhotoUri);
           navigation.goBack();
         },
       },
@@ -216,6 +240,14 @@ export default function DishFormScreen() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView contentContainerStyle={styles.container}>
+        {pendingPhotoUri ?? existingPhotoUri ? (
+          <Image source={{ uri: (pendingPhotoUri ?? existingPhotoUri) as string }} style={styles.photo} />
+        ) : (
+          <View style={styles.photoPlaceholder}>
+            <Ionicons name="image-outline" size={32} color="#999" />
+          </View>
+        )}
+
         {autoCaptureLoading && <ActivityIndicator style={styles.autoCaptureLoading} />}
         {autoCaptureError && <Text style={styles.error}>{autoCaptureError}</Text>}
 
@@ -296,6 +328,16 @@ export default function DishFormScreen() {
 const styles = StyleSheet.create({
   flex: { flex: 1 },
   container: { padding: 16 },
+  photo: { width: '100%', height: 200, borderRadius: 8, marginBottom: 4 },
+  photoPlaceholder: {
+    width: '100%',
+    height: 200,
+    borderRadius: 8,
+    marginBottom: 4,
+    backgroundColor: '#f0f0f0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   label: { fontSize: 13, color: '#555', marginTop: 12 },
   input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 8, marginTop: 4 },
   suggestionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 },
