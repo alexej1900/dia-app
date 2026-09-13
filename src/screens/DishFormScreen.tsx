@@ -26,6 +26,7 @@ import { buildIngredientRow, applyGramsEdit, IngredientRow } from './dishFormHel
 import { captureAndRecognizeDishPhoto, PhotoPickCancelledError } from '../services/dishPhotoCapture';
 import { persistDishPhoto, deleteDishPhoto } from '../services/dishPhotoStorage';
 import { ESTIMATED_ITEMS_WARNING, ESTIMATE_WARNING_COLOR } from '../constants/estimateWarning';
+import { formatProductName } from '../utils/formatProductName';
 
 type Nav = NativeStackNavigationProp<DishesStackParamList, 'DishForm'>;
 type Route = RouteProp<DishesStackParamList, 'DishForm'>;
@@ -117,6 +118,7 @@ export default function DishFormScreen() {
           dish.items.map((item) => ({
             productId: item.productId,
             productName: item.productName,
+            productNameRu: item.productNameRu,
             carbsPer100g: item.carbsPer100g,
             gramsText: String(item.grams),
             isEstimated: item.isEstimated,
@@ -281,7 +283,9 @@ export default function DishFormScreen() {
         <PhotoRecognitionButton onRecognized={handleRecognized} />
         {items.map((item, index) => (
           <View key={`${item.productId}-${index}`} style={styles.ingredientRow}>
-            <Text style={styles.ingredientName}>{item.productName}</Text>
+            <Text style={styles.ingredientName}>
+              {formatProductName({ name: item.productName, nameRu: item.productNameRu })}
+            </Text>
             <TextInput
               style={[styles.gramsInput, item.isEstimated && styles.gramsInputEstimated]}
               value={item.gramsText}
@@ -311,7 +315,7 @@ export default function DishFormScreen() {
                 activeOpacity={0.6}
                 onPress={() => addIngredient(item)}
               >
-                <Text style={styles.matchRowText}>{item.name}</Text>
+                <Text style={styles.matchRowText}>{formatProductName(item)}</Text>
               </TouchableOpacity>
             ))}
             {matches.length === 0 && (

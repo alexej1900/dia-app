@@ -1,11 +1,18 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { openDatabase } from '../db/database';
 import { listProducts, Product } from '../repositories/productsRepo';
 import { gramsPerW } from '../calculations/carbs';
+import { formatProductName } from '../utils/formatProductName';
+import { backfillProductTranslations } from '../services/productTranslationBackfill';
 import type { ProductsStackParamList } from '../navigation/RootNavigator';
+
+// Runs at most once per app session: backfillProductTranslations's own
+// `name_ru IS NULL` query is naturally idempotent, but this guard avoids
+// re-kicking it off every time this screen regains focus.
+let backfillStarted = false;
 
 type Nav = NativeStackNavigationProp<ProductsStackParamList, 'ProductsList'>;
 
@@ -24,6 +31,18 @@ export default function ProductsListScreen() {
       load(search);
     }, [load, search])
   );
+
+  useEffect(() => {
+    if (backfillStarted) return;
+    backfillStarted = true;
+    (async () => {
+      const db = await openDatabase();
+      await backfillProductTranslations(db);
+      load('');
+    })();
+    // Runs once per app session, deliberately not re-triggered by `search` changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -46,7 +65,7 @@ export default function ProductsListScreen() {
               style={styles.row}
               onPress={() => navigation.navigate('ProductForm', { productId: item.id })}
             >
-              <Text style={styles.name}>{item.name}</Text>
+              <Text style={styles.name}>{formatProductName(item)}</Text>
               <Text style={styles.detail}>
                 {item.carbsPer100g} g carbs / 100g{perW !== null ? ` · ${perW.toFixed(0)} g = 1 W` : ''}
               </Text>
