@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { openDatabase } from '../db/database';
@@ -41,11 +42,20 @@ export default function DishesListScreen() {
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <TouchableOpacity style={styles.row} onPress={() => navigation.navigate('DishForm', { dishId: item.id })}>
-            <Text style={styles.name}>{item.name}</Text>
-            <Text style={styles.detail}>
-              {item.totalWeight} g · {item.totalCarbs.toFixed(1)} g carbs · {item.totalW.toFixed(1)} W
-            </Text>
-            {item.hasEstimatedItems && <Text style={styles.estimatedFlag}>{ESTIMATED_ITEMS_WARNING}</Text>}
+            {item.photoUri ? (
+              <Image source={{ uri: item.photoUri }} style={styles.thumbnail} />
+            ) : (
+              <View style={styles.thumbnailPlaceholder}>
+                <Ionicons name="image-outline" size={20} color="#999" />
+              </View>
+            )}
+            <View style={styles.textStack}>
+              <Text style={styles.name}>{item.name}</Text>
+              <Text style={styles.detail}>
+                {item.totalWeight} g · {item.totalCarbs.toFixed(1)} g carbs · {item.totalW.toFixed(1)} W
+              </Text>
+              {item.hasEstimatedItems && <Text style={styles.estimatedFlag}>{ESTIMATED_ITEMS_WARNING}</Text>}
+            </View>
           </TouchableOpacity>
         )}
       />
@@ -65,7 +75,24 @@ export default function DishesListScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 16 },
   search: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 8, marginBottom: 12 },
-  row: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#eee' },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  thumbnail: { width: 48, height: 48, borderRadius: 8, marginRight: 12 },
+  thumbnailPlaceholder: {
+    width: 48,
+    height: 48,
+    borderRadius: 8,
+    marginRight: 12,
+    backgroundColor: '#f0f0f0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  textStack: { flex: 1 },
   name: { fontSize: 16, fontWeight: '600' },
   detail: { fontSize: 13, color: '#555' },
   addButton: { marginTop: 12, backgroundColor: '#2e7d32', borderRadius: 8, padding: 12, alignItems: 'center' },
