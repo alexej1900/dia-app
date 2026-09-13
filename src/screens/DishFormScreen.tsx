@@ -302,13 +302,33 @@ export default function DishFormScreen() {
           onChangeText={setProductSearch}
           placeholder="Search products to add"
         />
-        {matches.length > 0 && (
+        {productSearch.trim() !== '' && (
           <View style={styles.matchList}>
             {matches.map((item) => (
-              <TouchableOpacity key={item.id} style={styles.matchRow} onPress={() => addIngredient(item)}>
-                <Text>{item.name}</Text>
+              <TouchableOpacity
+                key={item.id}
+                style={styles.matchRow}
+                activeOpacity={0.6}
+                onPress={() => addIngredient(item)}
+              >
+                <Text style={styles.matchRowText}>{item.name}</Text>
               </TouchableOpacity>
             ))}
+            {matches.length === 0 && (
+              <TouchableOpacity
+                style={styles.addProductRow}
+                activeOpacity={0.6}
+                onPress={() =>
+                  navigation.navigate('ProductForm', {
+                    prefillName: productSearch.trim(),
+                    onCreated: (product) => addIngredient(product),
+                  })
+                }
+              >
+                <Ionicons name="add-circle-outline" size={18} color="#2e7d32" />
+                <Text style={styles.addProductRowText}>Add &quot;{productSearch.trim()}&quot; as a new product</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
@@ -365,8 +385,27 @@ const styles = StyleSheet.create({
   gramsInputEstimated: { fontStyle: 'italic', color: '#777' },
   estimatedLabel: { fontSize: 11, color: '#777', marginRight: 8 },
   removeText: { color: '#c62828' },
-  matchList: { borderWidth: 1, borderColor: '#eee', marginTop: 4 },
-  matchRow: { padding: 8, borderBottomWidth: 1, borderBottomColor: '#eee' },
+  matchList: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    marginTop: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    overflow: 'hidden',
+  },
+  matchRow: { paddingVertical: 12, paddingHorizontal: 12, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
+  matchRowText: { fontSize: 15 },
+  addProductRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+  },
+  addProductRowText: { fontSize: 15, color: '#2e7d32', fontWeight: '600', flexShrink: 1 },
   totals: { marginTop: 16, fontWeight: '600' },
   autoCaptureLoading: { marginBottom: 12 },
   estimatedWarning: { color: ESTIMATE_WARNING_COLOR, marginTop: 4, fontSize: 13 },
